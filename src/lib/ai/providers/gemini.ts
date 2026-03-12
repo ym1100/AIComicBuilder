@@ -39,16 +39,47 @@ export class GeminiProvider implements AIProvider {
 
   async generateImage(prompt: string, options?: ImageOptions): Promise<string> {
     const model = options?.model || this.defaultModel;
+
+    // Build multimodal parts: reference images + text prompt
+    const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [];
+
+    // Attach reference images (character sheets, first frame, etc.)
+    if (options?.referenceImages?.length) {
+      let imgIndex = 0;
+      for (const imgPath of options.referenceImages) {
+        try {
+          const resolved = path.resolve(imgPath);
+          if (fs.existsSync(resolved)) {
+            const data = fs.readFileSync(resolved).toString("base64");
+            const ext = path.extname(resolved).toLowerCase();
+            const mimeType = ext === ".png" ? "image/png" : "image/jpeg";
+            imgIndex++;
+            parts.push({ text: `[Reference Image ${imgIndex}]` });
+            parts.push({ inlineData: { mimeType, data } });
+          }
+        } catch {
+          // Skip unreadable images
+        }
+      }
+      if (imgIndex > 0) {
+        parts.push({ text: `\n[END OF REFERENCE IMAGES — ${imgIndex} images total]\nThe generated image MUST reproduce these characters with the EXACT same visual style, appearance, clothing, and proportions as shown in the reference images above.\n\n` + prompt });
+      } else {
+        parts.push({ text: prompt });
+      }
+    } else {
+      parts.push({ text: prompt });
+    }
+
     const response = await this.client.models.generateContent({
       model,
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      contents: [{ role: "user", parts }],
       config: { responseModalities: ["image", "text"] },
     });
 
-    const parts = response.candidates?.[0]?.content?.parts;
-    if (!parts) throw new Error("No image returned from Gemini");
+    const responseParts = response.candidates?.[0]?.content?.parts;
+    if (!responseParts) throw new Error("No image returned from Gemini");
 
-    for (const part of parts) {
+    for (const part of responseParts) {
       if (part.inlineData?.data) {
         const buffer = Buffer.from(part.inlineData.data, "base64");
         const ext = part.inlineData.mimeType?.includes("png") ? "png" : "jpg";

@@ -32,6 +32,8 @@ Story editing principles:
 - Maintain strict character name consistency across all scenes
 - If the source is vague, infer reasonable visual details that serve the story
 
+CRITICAL LANGUAGE RULE: All text content in the JSON (title, synopsis, setting, description, mood, dialogue text, emotion) MUST be in the SAME LANGUAGE as the source text. If the source is in Chinese, all output text must be in Chinese. Do NOT translate to English.
+
 Respond ONLY with valid JSON. No markdown fences. No commentary.`;
 
 export function buildScriptParsePrompt(script: string): string {
@@ -39,5 +41,7 @@ export function buildScriptParsePrompt(script: string): string {
 
 --- SOURCE TEXT ---
 ${script}
---- END ---`;
+--- END ---
+
+IMPORTANT: Your output language MUST match the language of the source text above. If it is in Chinese, write ALL JSON text fields in Chinese. Do NOT translate to English.`;
 }
