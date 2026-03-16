@@ -42,8 +42,12 @@ export class SeedanceProvider implements VideoProvider {
   }
 
   async generateVideo(params: VideoGenerateParams): Promise<string> {
-    const firstFrameUrl = toDataUrl(params.firstFrame);
-    const lastFrameUrl = toDataUrl(params.lastFrame);
+    if (!("firstFrame" in params)) {
+      throw new Error("Seedance provider only supports keyframe (image2video) mode");
+    }
+    const { firstFrame, lastFrame } = params as { firstFrame: string; lastFrame: string };
+    const firstFrameUrl = toDataUrl(firstFrame);
+    const lastFrameUrl = toDataUrl(lastFrame);
 
     // Build content array per Seedance API spec
     const content: Record<string, unknown>[] = [

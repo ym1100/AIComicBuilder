@@ -40,7 +40,7 @@ export async function handleVideoGenerate(task: Task) {
     lastFrame: shot.lastFrame,
     prompt,
     duration: shot.duration ?? 10,
-    ratio: payload.ratio,
+    ratio: payload.ratio ?? "16:9",
   });
 
   await db

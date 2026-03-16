@@ -47,10 +47,14 @@ export class VeoProvider implements VideoProvider {
   }
 
   async generateVideo(params: VideoGenerateParams): Promise<string> {
+    if (!("firstFrame" in params)) {
+      throw new Error("Veo provider only supports keyframe (image2video) mode");
+    }
+    const { firstFrame, lastFrame } = params as { firstFrame: string; lastFrame: string };
     const durationSeconds = clampDuration(params.duration);
     const aspectRatio = toAspectRatio(params.ratio);
-    const firstFrameData = readImageData(params.firstFrame);
-    const lastFrameData = readImageData(params.lastFrame);
+    const firstFrameData = readImageData(firstFrame);
+    const lastFrameData = readImageData(lastFrame);
 
     console.log(
       `[Veo] Submitting task: model=${this.model}, duration=${durationSeconds}s, ratio=${aspectRatio}`
