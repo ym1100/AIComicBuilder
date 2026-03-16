@@ -46,6 +46,7 @@ export const shots = sqliteTable("shots", {
   firstFrame: text("first_frame"),
   lastFrame: text("last_frame"),
   videoUrl: text("video_url"),
+  referenceVideoUrl: text("reference_video_url"),
   status: text("status", {
     enum: ["pending", "generating", "completed", "failed"],
   })

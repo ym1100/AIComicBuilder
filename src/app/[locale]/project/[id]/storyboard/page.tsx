@@ -106,9 +106,11 @@ export default function StoryboardPage() {
   const shotsWithFrames = project.shots.filter(
     (s) => s.firstFrame && s.lastFrame
   ).length;
-  const shotsWithVideo = project.shots.filter((s) => s.videoUrl).length;
-
   const generationMode = (project.generationMode || "keyframe") as "keyframe" | "reference";
+
+  const shotsWithVideo = project.shots.filter((s) =>
+    generationMode === "reference" ? s.referenceVideoUrl : s.videoUrl
+  ).length;
   const charactersWithRefs = project.characters.filter((c) => c.referenceImage);
   const hasReferenceImages = charactersWithRefs.length > 0;
 
@@ -475,7 +477,7 @@ export default function StoryboardPage() {
               duration={shot.duration}
               firstFrame={shot.firstFrame}
               lastFrame={shot.lastFrame}
-              videoUrl={shot.videoUrl}
+              videoUrl={generationMode === "reference" ? shot.referenceVideoUrl : shot.videoUrl}
               status={shot.status}
               dialogues={shot.dialogues || []}
               onUpdate={() => fetchProject(project.id)}

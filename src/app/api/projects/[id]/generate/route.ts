@@ -1042,10 +1042,10 @@ async function handleSingleReferenceVideo(
 
     await db
       .update(shots)
-      .set({ videoUrl: videoPath, status: "completed" })
+      .set({ referenceVideoUrl: videoPath, status: "completed" })
       .where(eq(shots.id, shotId));
 
-    return NextResponse.json({ shotId, videoUrl: videoPath, status: "ok" });
+    return NextResponse.json({ shotId, referenceVideoUrl: videoPath, status: "ok" });
   } catch (err) {
     console.error(`[SingleReferenceVideo] Error for shot ${shotId}:`, err);
     await db.update(shots).set({ status: "failed" }).where(eq(shots.id, shotId));
@@ -1074,7 +1074,7 @@ async function handleBatchReferenceVideo(
     .orderBy(asc(shots.sequence));
 
   const eligible = allShots.filter(
-    (s) => s.status !== "generating" && !s.videoUrl
+    (s) => s.status !== "generating" && !s.referenceVideoUrl
   );
   if (eligible.length === 0) {
     return NextResponse.json({ results: [], message: "No eligible shots" });
@@ -1113,7 +1113,7 @@ async function handleBatchReferenceVideo(
     shotId: string;
     sequence: number;
     status: "ok" | "error";
-    videoUrl?: string;
+    referenceVideoUrl?: string;
     error?: string;
   }> = [];
 
@@ -1149,11 +1149,11 @@ async function handleBatchReferenceVideo(
 
       await db
         .update(shots)
-        .set({ videoUrl: videoPath, status: "completed" })
+        .set({ referenceVideoUrl: videoPath, status: "completed" })
         .where(eq(shots.id, shot.id));
 
       console.log(`[BatchReferenceVideo] Shot ${shot.sequence} completed`);
-      results.push({ shotId: shot.id, sequence: shot.sequence, status: "ok", videoUrl: videoPath });
+      results.push({ shotId: shot.id, sequence: shot.sequence, status: "ok", referenceVideoUrl: videoPath });
     } catch (err) {
       console.error(`[BatchReferenceVideo] Error for shot ${shot.sequence}:`, err);
       await db.update(shots).set({ status: "failed" }).where(eq(shots.id, shot.id));
@@ -1172,14 +1172,17 @@ async function handleBatchReferenceVideo(
 // --- video_assemble: synchronous ffmpeg concat + subtitle burn ---
 
 async function handleVideoAssembleSync(projectId: string) {
+  const [project] = await db.select({ generationMode: projects.generationMode }).from(projects).where(eq(projects.id, projectId));
+
   const projectShots = await db
     .select()
     .from(shots)
     .where(eq(shots.projectId, projectId))
     .orderBy(asc(shots.sequence));
 
+  const isReference = project?.generationMode === "reference";
   const videoPaths = projectShots
-    .map((s) => s.videoUrl)
+    .map((s) => isReference ? s.referenceVideoUrl : s.videoUrl)
     .filter(Boolean) as string[];
 
   if (videoPaths.length === 0) {
