@@ -322,7 +322,7 @@ export default function StoryboardPage() {
         )}
 
         {/* Step indicators */}
-        <div className="flex items-center gap-1">
+        <div className="mt-4 flex items-center gap-1">
           <WorkflowStep
             step={1}
             label={t("project.workflowStepShots")}

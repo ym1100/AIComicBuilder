@@ -35,27 +35,27 @@ export function GenerationModeTab() {
   }
 
   return (
-    <div className="flex gap-1 rounded-lg border border-[--border-subtle] bg-[--surface] p-1">
+    <div className="inline-flex gap-1.5 rounded-xl border border-[--border-subtle] bg-[--surface] p-1.5">
       <button
         onClick={() => switchMode("keyframe")}
-        className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+        className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all duration-150 ${
           mode === "keyframe"
-            ? "bg-white text-[--text-primary] shadow-sm"
-            : "text-[--text-muted] hover:text-[--text-secondary]"
+            ? "bg-white text-primary shadow ring-1 ring-primary/20"
+            : "text-[--text-muted] hover:bg-white/60 hover:text-[--text-secondary]"
         }`}
       >
-        <Film className="h-3.5 w-3.5" />
+        <Film className={`h-4 w-4 ${mode === "keyframe" ? "text-primary" : ""}`} />
         {t("generationModeKeyframe")}
       </button>
       <button
         onClick={() => switchMode("reference")}
-        className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+        className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all duration-150 ${
           mode === "reference"
-            ? "bg-white text-[--text-primary] shadow-sm"
-            : "text-[--text-muted] hover:text-[--text-secondary]"
+            ? "bg-white text-violet-600 shadow ring-1 ring-violet-200"
+            : "text-[--text-muted] hover:bg-white/60 hover:text-[--text-secondary]"
         }`}
       >
-        <ImageIcon className="h-3.5 w-3.5" />
+        <ImageIcon className={`h-4 w-4 ${mode === "reference" ? "text-violet-600" : ""}`} />
         {t("generationModeReference")}
       </button>
     </div>
