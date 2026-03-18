@@ -44,6 +44,15 @@ function toBase64(filePath: string): string {
   return data.toString("base64");
 }
 
+async function toBase64FromPathOrUrl(pathOrUrl: string): Promise<string> {
+  if (pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://")) {
+    const res = await fetch(pathOrUrl);
+    const buf = Buffer.from(await res.arrayBuffer());
+    return buf.toString("base64");
+  }
+  return toBase64(pathOrUrl);
+}
+
 export class KlingVideoProvider implements VideoProvider {
   private apiKey: string;
   private secretKey: string;
@@ -117,11 +126,27 @@ export class KlingVideoProvider implements VideoProvider {
       console.log(`[Kling Video] image2video task submitted: ${taskId}`);
 
     } else {
-      // ── Reference image mode: text2video with initial image ──
-      const refImage = toBase64(params.initialImage!);
+      // ── Reference image mode: text2video with initial image + character refs ──
+
+      // Re-type params inside else branch: TypeScript's discriminated union narrowing via
+      // "firstFrame" in params does not always narrow to ReferenceVideoParams statically.
+      const refParams = params as VideoGenerateParams & {
+        initialImage: string;
+        characterRefs?: Array<{ name: string; imagePath: string }>;
+      };
+
+      // Use async helper to handle both local paths and HTTP URLs
+      const refImages: string[] = [await toBase64FromPathOrUrl(refParams.initialImage)];
+
+      // Toonflow pattern: append all character reference images (图片2, 图片3, ...)
+      if (refParams.characterRefs?.length) {
+        for (const ref of refParams.characterRefs) {
+          refImages.push(await toBase64FromPathOrUrl(ref.imagePath));
+        }
+      }
 
       console.log(
-        `[Kling Video] text2video: model=${this.model}, duration=${duration}s, ratio=${aspectRatio}`
+        `[Kling Video] text2video: model=${this.model}, duration=${duration}s, ratio=${aspectRatio}, refs=${refImages.length}`
       );
 
       let submitRes = await fetch(`${this.baseUrl}/v1/videos/text2video`, {
@@ -133,7 +158,7 @@ export class KlingVideoProvider implements VideoProvider {
         body: JSON.stringify({
           model: this.model,
           prompt: params.prompt,
-          reference_image: [refImage],
+          reference_image: refImages,
           duration,
           aspect_ratio: aspectRatio,
         }),
@@ -142,7 +167,9 @@ export class KlingVideoProvider implements VideoProvider {
       // Fallback: if reference_image is unsupported (400/422), retry without it
       if (submitRes.status === 400 || submitRes.status === 422) {
         const fallbackBody = await submitRes.text().catch(() => "");
-        console.warn(`[Kling Video] text2video reference_image rejected (${submitRes.status}: ${fallbackBody}), retrying without ref images`);
+        console.warn(
+          `[Kling Video] text2video reference_image rejected (${submitRes.status}: ${fallbackBody}), retrying without ref images`
+        );
         submitRes = await fetch(`${this.baseUrl}/v1/videos/text2video`, {
           method: "POST",
           headers: {
