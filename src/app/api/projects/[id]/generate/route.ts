@@ -106,7 +106,7 @@ export async function POST(
   }
 
   if (action === "batch_frame_generate") {
-    return handleBatchFrameGenerate(projectId, modelConfig);
+    return handleBatchFrameGenerate(projectId, payload, modelConfig);
   }
 
   if (action === "single_frame_generate") {
@@ -597,6 +597,7 @@ IMPORTANT: Keep the same scene, characters, and narrative intent. Only rephrase 
 
 async function handleBatchFrameGenerate(
   projectId: string,
+  payload?: Record<string, unknown>,
   modelConfig?: ModelConfig
 ) {
   if (!modelConfig?.image) {
@@ -628,10 +629,22 @@ async function handleBatchFrameGenerate(
   const ai = resolveImageProvider(modelConfig);
   const results: Array<{ shotId: string; sequence: number; status: string; firstFrame?: string; lastFrame?: string; error?: string }> = [];
 
+  const overwrite = payload?.overwrite === true;
   let previousLastFrame: string | undefined;
 
   for (let i = 0; i < allShots.length; i++) {
     const shot = allShots[i];
+
+    // Skip completed shots in normal mode, but advance the chain from their existing lastFrame
+    if (!overwrite && shot.firstFrame && shot.lastFrame) {
+      previousLastFrame = shot.lastFrame;
+      results.push({
+        shotId: shot.id,
+        sequence: shot.sequence,
+        status: "skipped",
+      });
+      continue;
+    }
 
     try {
       await db
@@ -907,7 +920,10 @@ async function handleBatchVideoGenerate(
     .where(eq(shots.projectId, projectId))
     .orderBy(asc(shots.sequence));
 
-  const eligible = allShots.filter((s) => s.firstFrame && s.lastFrame && !s.videoUrl);
+  const overwrite = payload?.overwrite === true;
+  const eligible = allShots.filter((s) =>
+    s.firstFrame && s.lastFrame && (overwrite || !s.videoUrl)
+  );
   if (eligible.length === 0) {
     return NextResponse.json({ results: [], message: "No eligible shots" });
   }
@@ -1299,8 +1315,9 @@ async function handleBatchReferenceVideo(
     .where(eq(shots.projectId, projectId))
     .orderBy(asc(shots.sequence));
 
+  const overwrite = payload?.overwrite === true;
   const eligible = allShots.filter(
-    (s) => s.status !== "generating" && !s.referenceVideoUrl
+    (s) => s.status !== "generating" && (overwrite || !s.referenceVideoUrl)
   );
   if (eligible.length === 0) {
     return NextResponse.json({ results: [], message: "No eligible shots" });
