@@ -84,7 +84,7 @@ export default function PreviewPage() {
       const res = await apiFetch(`/api/projects/${project.id}/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "video_assemble", ...(versionId ? { versionId } : {}) }),
+        body: JSON.stringify({ action: "video_assemble", payload: versionId ? { versionId } : undefined }),
       });
       await res.json();
     } catch (err) {

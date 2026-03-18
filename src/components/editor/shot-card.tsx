@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -48,16 +48,19 @@ interface ShotCardProps {
   lastFrame: string | null;
   videoUrl: string | null;
   sceneRefFrame?: string | null;
+  videoPrompt?: string | null;
   status: string;
   dialogues: Dialogue[];
   onUpdate: () => void;
   batchGeneratingFrames?: boolean;
   batchGeneratingVideo?: boolean;
+  batchGeneratingVideoPrompts?: boolean;
   characterDescriptions?: string;
   generationMode?: "keyframe" | "reference";
   batchGeneratingReferenceVideo?: boolean;
   batchGeneratingSceneFrames?: boolean;
   batchSceneFramesOverwrite?: boolean;
+  activeStep?: 1 | 2 | 3 | 4;
 }
 
 const statusVariant: Record<string, "outline" | "success" | "warning" | "destructive"> = {
@@ -83,16 +86,19 @@ export function ShotCard({
   lastFrame,
   videoUrl,
   sceneRefFrame,
+  videoPrompt,
   status,
   dialogues,
   onUpdate,
   batchGeneratingFrames,
   batchGeneratingVideo,
+  batchGeneratingVideoPrompts,
   characterDescriptions,
   generationMode = "keyframe",
   batchGeneratingReferenceVideo,
   batchGeneratingSceneFrames,
   batchSceneFramesOverwrite,
+  activeStep = 2,
 }: ShotCardProps) {
   const t = useTranslations();
   const getModelConfig = useModelStore((s) => s.getModelConfig);
@@ -100,11 +106,19 @@ export function ShotCard({
   const [editStartFrame, setEditStartFrame] = useState(startFrameDesc ?? "");
   const [editEndFrame, setEditEndFrame] = useState(endFrameDesc ?? "");
   const [editMotionScript, setEditMotionScript] = useState(motionScript ?? "");
+  const [editVideoPrompt, setEditVideoPrompt] = useState(videoPrompt ?? "");
   const [editCameraDirection, setEditCameraDirection] = useState(cameraDirection ?? "static");
+  useEffect(() => { setEditPrompt(prompt); }, [prompt]);
+  useEffect(() => { setEditStartFrame(startFrameDesc ?? ""); }, [startFrameDesc]);
+  useEffect(() => { setEditEndFrame(endFrameDesc ?? ""); }, [endFrameDesc]);
+  useEffect(() => { setEditMotionScript(motionScript ?? ""); }, [motionScript]);
+  useEffect(() => { setEditVideoPrompt(videoPrompt ?? ""); }, [videoPrompt]);
+  useEffect(() => { setEditCameraDirection(cameraDirection ?? "static"); }, [cameraDirection]);
   const [editDuration, setEditDuration] = useState(duration);
   const [generatingFrames, setGeneratingFrames] = useState(false);
   const [generatingSceneFrame, setGeneratingSceneFrame] = useState(false);
   const [generatingVideo, setGeneratingVideo] = useState(false);
+  const [generatingPrompt, setGeneratingPrompt] = useState(false);
   const [rewritingText, setRewritingText] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [previewSrc, setPreviewSrc] = useState<string | null>(null);
@@ -118,6 +132,8 @@ export function ShotCard({
     generatingVideo ||
     (!!batchGeneratingVideo && !!firstFrame && !!lastFrame && !videoUrl) ||
     (!!batchGeneratingReferenceVideo && generationMode === "reference" && !videoUrl);
+  const hasFrame = !!(sceneRefFrame || firstFrame || lastFrame);
+  const isGeneratingPrompt = generatingPrompt || (!!batchGeneratingVideoPrompts && hasFrame);
   const variant =
     generationMode === "reference" && status === "completed"
       ? "default"
@@ -155,6 +171,26 @@ export function ShotCard({
       toast.error(err instanceof Error ? err.message : t("common.generationFailed"));
     }
     setGeneratingFrames(false);
+  }
+
+  async function handleGenerateVideoPrompt() {
+    setGeneratingPrompt(true);
+    try {
+      await apiFetch(`/api/projects/${projectId}/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "single_video_prompt",
+          payload: { shotId: id },
+          modelConfig: getModelConfig(),
+        }),
+      });
+      onUpdate();
+    } catch (err) {
+      console.error("Video prompt generate error:", err);
+      toast.error(err instanceof Error ? err.message : t("common.generationFailed"));
+    }
+    setGeneratingPrompt(false);
   }
 
   async function handleGenerateVideo() {
@@ -248,15 +284,12 @@ export function ShotCard({
     const videoPrompt = generationMode === "reference"
       ? buildReferenceVideoPrompt({
           videoScript: resolvedVideoScript,
-          motionScript: motionScript ?? undefined,
-          characterDescriptions: characterDescriptions || undefined,
           cameraDirection,
+          duration: editDuration,
           dialogues: dialogueList,
         })
       : buildVideoPrompt({
           videoScript: resolvedVideoScript,
-          motionScript: motionScript ?? undefined,
-          characterDescriptions: characterDescriptions || undefined,
           cameraDirection,
           startFrameDesc: startFrameDesc ?? undefined,
           endFrameDesc: endFrameDesc ?? undefined,
@@ -343,63 +376,55 @@ export function ShotCard({
         <div className="flex items-center gap-2">
           {!expanded && (
             <>
-              {generationMode !== "reference" && (
+              {/* Step 2: generate frame */}
+              {activeStep === 2 && generationMode !== "reference" && (
                 <Button
                   size="xs"
                   variant="outline"
                   onClick={(e) => { e.stopPropagation(); handleGenerateFrames(); }}
                   disabled={isGeneratingFrames || isGeneratingVideo}
                 >
-                  {isGeneratingFrames ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    <ImageIcon className="h-3 w-3" />
-                  )}
+                  {isGeneratingFrames ? <Loader2 className="h-3 w-3 animate-spin" /> : <ImageIcon className="h-3 w-3" />}
                   {isGeneratingFrames ? t("common.generating") : t("project.generateFrames")}
                 </Button>
               )}
-              {generationMode === "reference" ? (
-                <>
-                  <Button
-                    size="xs"
-                    variant="outline"
-                    onClick={(e) => { e.stopPropagation(); handleGenerateSceneFrame(); }}
-                    disabled={isGeneratingSceneFrame || isGeneratingVideo}
-                  >
-                    {isGeneratingSceneFrame ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <ImageIcon className="h-3 w-3" />
-                    )}
-                    {isGeneratingSceneFrame ? t("common.generating") : t("shot.sceneRefFrame")}
-                  </Button>
-                  <Button
-                    size="xs"
-                    onClick={(e) => { e.stopPropagation(); handleGenerateReferenceVideo(); }}
-                    disabled={isGeneratingSceneFrame || isGeneratingVideo}
-                  >
-                    {isGeneratingVideo ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <Sparkles className="h-3 w-3" />
-                    )}
-                    {isGeneratingVideo ? t("common.generating") : t("project.generateVideo")}
-                  </Button>
-                </>
-              ) : (firstFrame && lastFrame && (
+              {activeStep === 2 && generationMode === "reference" && (
                 <Button
                   size="xs"
-                  onClick={(e) => { e.stopPropagation(); handleGenerateVideo(); }}
+                  variant="outline"
+                  onClick={(e) => { e.stopPropagation(); handleGenerateSceneFrame(); }}
+                  disabled={isGeneratingSceneFrame || isGeneratingVideo}
+                >
+                  {isGeneratingSceneFrame ? <Loader2 className="h-3 w-3 animate-spin" /> : <ImageIcon className="h-3 w-3" />}
+                  {isGeneratingSceneFrame ? t("common.generating") : t("shot.sceneRefFrame")}
+                </Button>
+              )}
+              {/* Step 3: generate video prompt */}
+              {activeStep === 3 && hasFrame && (
+                <Button
+                  size="xs"
+                  variant="outline"
+                  onClick={(e) => { e.stopPropagation(); handleGenerateVideoPrompt(); }}
+                  disabled={isGeneratingPrompt}
+                >
+                  {isGeneratingPrompt ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                  {isGeneratingPrompt ? t("common.generating") : t("shot.generateVideoPrompt")}
+                </Button>
+              )}
+              {/* Step 4: generate video */}
+              {activeStep === 4 && (generationMode === "reference" || (firstFrame && lastFrame)) && (
+                <Button
+                  size="xs"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    generationMode === "reference" ? handleGenerateReferenceVideo() : handleGenerateVideo();
+                  }}
                   disabled={isGeneratingFrames || isGeneratingVideo}
                 >
-                  {isGeneratingVideo ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    <Sparkles className="h-3 w-3" />
-                  )}
+                  {isGeneratingVideo ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
                   {isGeneratingVideo ? t("common.generating") : t("project.generateVideo")}
                 </Button>
-              ))}
+              )}
             </>
           )}
           <button
@@ -546,7 +571,23 @@ export function ShotCard({
             </div>
           )}
 
+          {/* Video Prompt display */}
+          {(videoPrompt || editVideoPrompt) && (
+            <div className="rounded-xl bg-purple-50/60 p-3">
+              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-purple-600">
+                {t("shot.videoPrompt")}
+              </p>
+              <Textarea
+                value={editVideoPrompt}
+                onChange={(e) => setEditVideoPrompt(e.target.value)}
+                onBlur={() => patchShot({ videoPrompt: editVideoPrompt })}
+                className="rounded-none border-0 bg-transparent p-0 text-sm focus-visible:ring-0 [field-sizing:fixed] min-h-[8rem] max-h-64 overflow-y-auto resize-none"
+              />
+            </div>
+          )}
+
           <div className="flex items-center gap-2 flex-wrap">
+            {/* Step 1: rewrite text — always visible */}
             <InlineModelPicker capability="text" />
             <Button
               size="sm"
@@ -554,53 +595,63 @@ export function ShotCard({
               onClick={handleRewriteText}
               disabled={rewritingText || isGeneratingFrames || isGeneratingVideo}
             >
-              {rewritingText ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <RefreshCw className="h-3.5 w-3.5" />
-              )}
+              {rewritingText ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
               {rewritingText ? t("common.generating") : t("shot.rewriteText")}
             </Button>
-            {generationMode === "reference" ? (
+
+            {/* Step 2: generate frame */}
+            {activeStep === 2 && (
+              generationMode === "reference" ? (
+                <>
+                  <div className="h-4 w-px bg-[--border-subtle]" />
+                  <InlineModelPicker capability="image" />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleGenerateSceneFrame}
+                    disabled={isGeneratingSceneFrame || isGeneratingVideo || rewritingText}
+                  >
+                    {isGeneratingSceneFrame ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImageIcon className="h-3.5 w-3.5" />}
+                    {isGeneratingSceneFrame ? t("common.generating") : t("shot.sceneRefFrame")}
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <div className="h-4 w-px bg-[--border-subtle]" />
+                  <InlineModelPicker capability="image" />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleGenerateFrames}
+                    disabled={isGeneratingFrames || isGeneratingVideo || rewritingText}
+                  >
+                    {isGeneratingFrames ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImageIcon className="h-3.5 w-3.5" />}
+                    {isGeneratingFrames ? t("common.generating") : t("project.generateFrames")}
+                  </Button>
+                </>
+              )
+            )}
+
+            {/* Step 3: generate video prompt */}
+            {activeStep === 3 && hasFrame && (
               <>
                 <div className="h-4 w-px bg-[--border-subtle]" />
-                <InlineModelPicker capability="image" />
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={handleGenerateSceneFrame}
-                  disabled={isGeneratingSceneFrame || isGeneratingVideo || rewritingText}
+                  onClick={handleGenerateVideoPrompt}
+                  disabled={isGeneratingPrompt || isGeneratingVideo || rewritingText}
                 >
-                  {isGeneratingSceneFrame ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <ImageIcon className="h-3.5 w-3.5" />
-                  )}
-                  {isGeneratingSceneFrame ? t("common.generating") : t("shot.sceneRefFrame")}
-                </Button>
-              </>
-            ) : (
-              <>
-                <div className="h-4 w-px bg-[--border-subtle]" />
-                <InlineModelPicker capability="image" />
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleGenerateFrames}
-                  disabled={isGeneratingFrames || isGeneratingVideo || rewritingText}
-                >
-                  {isGeneratingFrames ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <ImageIcon className="h-3.5 w-3.5" />
-                  )}
-                  {isGeneratingFrames ? t("common.generating") : t("project.generateFrames")}
+                  {isGeneratingPrompt ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                  {isGeneratingPrompt ? t("common.generating") : t("shot.generateVideoPrompt")}
                 </Button>
               </>
             )}
 
-            {(generationMode === "reference" || (firstFrame && lastFrame)) && (
+            {/* Step 4: generate video */}
+            {activeStep === 4 && (generationMode === "reference" || (firstFrame && lastFrame)) && (
               <>
+                <div className="h-4 w-px bg-[--border-subtle]" />
                 <InlineModelPicker capability="video" />
                 <VideoRatioPicker value={videoRatio} onChange={setVideoRatio} />
                 {generationMode !== "reference" && (
@@ -625,11 +676,7 @@ export function ShotCard({
                   onClick={generationMode === "reference" ? handleGenerateReferenceVideo : handleGenerateVideo}
                   disabled={isGeneratingFrames || isGeneratingVideo}
                 >
-                  {isGeneratingVideo ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Sparkles className="h-3.5 w-3.5" />
-                  )}
+                  {isGeneratingVideo ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
                   {isGeneratingVideo ? t("common.generating") : t("project.generateVideo")}
                 </Button>
               </>

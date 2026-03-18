@@ -49,8 +49,6 @@ export async function handleVideoGenerate(task: Task) {
   const videoScript = shot.videoScript || shot.motionScript || shot.prompt || "";
   const prompt = buildVideoPrompt({
     videoScript,
-    motionScript: shot.motionScript ?? undefined,
-    characterDescriptions: characterDescriptions || undefined,
     cameraDirection: shot.cameraDirection || "static",
     startFrameDesc: shot.startFrameDesc ?? undefined,
     endFrameDesc: shot.endFrameDesc ?? undefined,

@@ -3,6 +3,7 @@ export interface TextOptions {
   temperature?: number;
   maxTokens?: number;
   systemPrompt?: string;
+  images?: string[];  // local file paths for vision input
 }
 
 export interface ImageOptions {

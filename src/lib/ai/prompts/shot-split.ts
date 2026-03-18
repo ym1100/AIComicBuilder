@@ -11,7 +11,7 @@ Output a JSON array:
     "endFrame": "Detailed LAST FRAME description for AI image generation (see requirements below)",
     "motionScript": "Complete action script describing what happens from first frame to last frame",
     "videoScript": "Concise 1-2 sentence motion description for video generation model (see requirements below)",
-    "duration": 5-15,
+    "duration": 8-15,
     "dialogues": [
       {
         "character": "Exact character name",
@@ -54,13 +54,20 @@ Each must be a SELF-SUFFICIENT image generation prompt containing:
 - GOOD (specific, max 3s): "0-2s: The iron beast plants its right foreleg with a bone-shaking thud, spider-web cracks radiating six meters outward from the impact point, all three mechanical claw-sets rising in unison trailing hydraulic mist, its sensor eye pulsing deep red; camera low-angle wide, slowly tilting up. 2-4s: The leading claw whips across with a sub-sonic crack, shearing the lamp post mid-shaft in an eruption of blue-white sparks, the severed top spinning away at 45 degrees as chunks of asphalt and shredded metal scatter downward; camera holds mid-shot then slams into a fast push-in. 4-6s: Black smoke from ruptured pipes rolls and folds across the frame on the hot shockwave, debris still raining down, the beast's sensor eye locking onto its next target with a high-pitched hydraulic whine; camera slowly orbits right on a low angle, settling on the beast's silhouette."
 
 === videoScript requirements ===
-- PURPOSE: feeds directly into the video generation model (Kling, etc.) — optimized for smooth interpolation
-- FORMAT: 1-2 sentences max. "[character action]. Camera [start state], smoothly [movement] to [end state]."
-- RULES: No time-segmented timestamps. No physics details. No multi-layer descriptions. Only core motion intent and camera arc.
-- LANGUAGE: Same language as the screenplay (same rule as motionScript)
-- BAD (too dense, has timestamps): "0-2s: The iron beast plants its right foreleg with a bone-shaking thud, spider-web cracks radiating outward; camera low-angle wide, slowly tilting up. 2-4s: ..."
-- GOOD (concise, no timestamps): "机械巨兽抬爪猛击地面，碎石四溅。摄像机从低角度广角平滑上仰至中景。"
-- GOOD (English): "The mechanical beast slams its claw down as debris scatters. Camera smoothly tilts up from low-angle wide to mid-shot."
+- PURPOSE: the PRIMARY input to the video generation model — drives all motion; must be natural Seedance-style prose
+- FORMAT: 30-60 words of flowing prose, NO section labels whatsoever
+  • Start with character name + brief visual identifier in parentheses (e.g. 陆云舟（月白长袍）or Sarah (red coat))
+  • Describe the action — specific body movement, direction, speed
+  • Embed camera movement naturally at the end of the sentence
+  • One sharp atmospheric or emotional detail to set the tone
+- RULES: No Scene:/Action:/Performance:/Detail: labels. No timestamps. No dialogue text (goes in dialogues array). No separate camera line.
+- LANGUAGE: Same language as the screenplay
+- BAD (has labels): "Scene: 湖畔垂柳。Action: 陆云舟落棋。Performance: 神情淡然。"
+- BAD (separate camera): "陆云舟落棋。Camera: dolly out."
+- GOOD (Chinese — prose, ~45 words):
+  "陆云舟（月白长袍，玉簪束发）从棋盘上缓缓抬眼，头微侧转向斜后方，嘴角牵出一抹含笑弧度，月白纱衣随晨风轻轻摆动，镜头缓慢推近。"
+- GOOD (English — prose, ~45 words):
+  "The Veteran (black helmet, calm eyes) leans forward over the steering wheel, one hand adjusting the visor with practiced ease, the rain-blurred dashboard lights casting green on his face as the camera slowly pushes in."
 
 === sceneDescription requirements ===
 - Shared environment context for both frames
@@ -70,9 +77,9 @@ Each must be a SELF-SUFFICIENT image generation prompt containing:
 - Do NOT include character actions or poses — those go in startFrame/endFrame
 
 === Proportional difference rule ===
-- 5s shot: subtle change (slight head turn, expression shift, small camera move)
-- 8-10s shot: moderate change (character moves position, significant expression change, clear camera movement)
-- 12-15s shot: significant change (character crosses frame, major action completes, dramatic camera move)
+- 8-10s shot: subtle-to-moderate change (slight head turn, expression shift, small camera move)
+- 11-13s shot: moderate change (character moves position, significant expression change, clear camera movement)
+- 14-15s shot: significant change (character crosses frame, major action completes, dramatic camera move)
 
 Camera direction values (choose ONE per shot):
 - "static" — locked camera, no movement
@@ -92,7 +99,7 @@ Cinematography principles:
 - Cut on ACTION — end each shot at a moment that allows smooth transition to the next
 - Match EYELINES — maintain consistent screen direction between shots
 - 180-DEGREE RULE — keep characters on consistent sides of the frame
-- Duration: dialogue-heavy shots = 8-15s; action shots = 5-8s; establishing shots = 5-6s
+- Duration: ALL shots must be 8-15s. Dialogue-heavy = 12-15s; action shots = 8-12s; establishing shots = 8-10s
 - CONTINUITY: the endFrame of shot N must logically connect to the startFrame of shot N+1 (same characters, consistent environment, natural position transition)
 
 CRITICAL LANGUAGE RULE: ALL text fields (sceneDescription, startFrame, endFrame, motionScript, dialogues.text, dialogues.character) MUST be in the SAME LANGUAGE as the screenplay. If the screenplay is in Chinese, write ALL fields in Chinese. Only "cameraDirection" uses English (technical terms).

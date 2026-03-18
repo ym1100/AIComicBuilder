@@ -23,7 +23,25 @@ export class OpenAIProvider implements AIProvider {
     if (options?.systemPrompt) {
       messages.push({ role: "system", content: options.systemPrompt });
     }
-    messages.push({ role: "user", content: prompt });
+
+    if (options?.images?.length) {
+      const content: OpenAI.Chat.ChatCompletionContentPart[] = [];
+      for (const imgPath of options.images) {
+        try {
+          const resolved = path.resolve(imgPath);
+          if (fs.existsSync(resolved)) {
+            const data = fs.readFileSync(resolved).toString("base64");
+            const ext = path.extname(resolved).toLowerCase();
+            const mimeType = ext === ".png" ? "image/png" : "image/jpeg";
+            content.push({ type: "image_url", image_url: { url: `data:${mimeType};base64,${data}` } });
+          }
+        } catch { /* skip unreadable */ }
+      }
+      content.push({ type: "text", text: prompt });
+      messages.push({ role: "user", content });
+    } else {
+      messages.push({ role: "user", content: prompt });
+    }
 
     const response = await this.client.chat.completions.create({
       model: options?.model || this.defaultModel,
@@ -31,7 +49,6 @@ export class OpenAIProvider implements AIProvider {
       temperature: options?.temperature ?? 0.7,
       max_tokens: options?.maxTokens,
     });
-
     return response.choices[0]?.message?.content || "";
   }
 

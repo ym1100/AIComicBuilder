@@ -5,7 +5,7 @@ import { useModelStore } from "@/stores/model-store";
 import { ShotCard } from "@/components/editor/shot-card";
 import { Button } from "@/components/ui/button";
 import { useTranslations, useLocale } from "next-intl";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { StoryboardVersion } from "@/stores/project-store";
 import { useModelGuard } from "@/hooks/use-model-guard";
 import {
@@ -17,6 +17,7 @@ import {
   Check,
   ChevronRight,
   Download,
+  RefreshCw,
 } from "lucide-react";
 import { InlineModelPicker } from "@/components/editor/model-selector";
 import { VideoRatioPicker } from "@/components/editor/video-ratio-picker";
@@ -34,6 +35,8 @@ function WorkflowStep({
   status,
   icon: Icon,
   isLast,
+  isActive,
+  onClick,
 }: {
   step: number;
   label: string;
@@ -41,10 +44,17 @@ function WorkflowStep({
   status: StepStatus;
   icon: React.ElementType;
   isLast: boolean;
+  isActive?: boolean;
+  onClick?: () => void;
 }) {
   return (
     <div className="flex items-center gap-2">
-      <div className="flex items-center gap-2.5">
+      <button
+        onClick={onClick}
+        className={`flex items-center gap-2.5 rounded-lg px-2 py-1 transition-all hover:bg-[--surface] ${
+          isActive ? "ring-2 ring-primary/40 bg-primary/5 rounded-lg" : ""
+        }`}
+      >
         {/* Step circle */}
         <div
           className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-colors ${
@@ -62,7 +72,7 @@ function WorkflowStep({
           )}
         </div>
         {/* Label + count */}
-        <div className="min-w-0">
+        <div className="min-w-0 text-left">
           <p
             className={`text-sm font-medium leading-tight ${
               status === "active"
@@ -76,7 +86,7 @@ function WorkflowStep({
           </p>
           <p className="text-[10px] text-[--text-muted]">{count}</p>
         </div>
-      </div>
+      </button>
       {/* Connector */}
       {!isLast && (
         <ChevronRight className="mx-1 h-4 w-4 flex-shrink-0 text-[--text-muted]/40" />
@@ -94,12 +104,15 @@ export default function StoryboardPage() {
   const [generatingFrames, setGeneratingFrames] = useState(false);
   const [generatingVideos, setGeneratingVideos] = useState(false);
   const [generatingSceneFrames, setGeneratingSceneFrames] = useState(false);
+  const [generatingVideoPrompts, setGeneratingVideoPrompts] = useState(false);
   const [sceneFramesOverwrite, setSceneFramesOverwrite] = useState(false);
   const [generatingFramesOverwrite, setGeneratingFramesOverwrite] = useState(false);
   const [generatingVideosOverwrite, setGeneratingVideosOverwrite] = useState(false);
   const [videoRatio, setVideoRatio] = useState("16:9");
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
   const [versions, setVersions] = useState<StoryboardVersion[]>([]);
+  const [activeStep, setActiveStep] = useState<1 | 2 | 3 | 4>(1);
+  const manualStepRef = useRef(false);
   const textGuard = useModelGuard("text");
   const imageGuard = useModelGuard("image");
   const videoGuard = useModelGuard("video");
@@ -114,6 +127,20 @@ export default function StoryboardPage() {
       return current;
     });
   }, [project?.versions]);
+
+  useEffect(() => {
+    if (!project || manualStepRef.current) return;
+    const shots = project.shots;
+    const totalCount = shots.length;
+    const frameAnyCount = shots.filter(
+      (s) => s.sceneRefFrame || s.firstFrame || s.lastFrame
+    ).length;
+    const videoPromptsCount = shots.filter((s) => s.videoPrompt).length;
+    if (totalCount === 0) setActiveStep(1);
+    else if (frameAnyCount === 0) setActiveStep(2);
+    else if (videoPromptsCount === 0) setActiveStep(3);
+    else setActiveStep(4);
+  }, [project]);
 
   if (!project) return null;
 
@@ -130,6 +157,11 @@ export default function StoryboardPage() {
   const shotsWithVideo = project.shots.filter((s) =>
     generationMode === "reference" ? s.referenceVideoUrl : s.videoUrl
   ).length;
+  const shotsWithVideoPrompts = project.shots.filter((s) => s.videoPrompt).length;
+  const shotsWithSceneFrames = project.shots.filter((s) => s.sceneRefFrame).length;
+  const shotsWithFrameAny = project.shots.filter(
+    (s) => s.sceneRefFrame || s.firstFrame || s.lastFrame
+  ).length;
   const charactersWithRefs = project.characters.filter((c) => c.referenceImage);
   const hasReferenceImages = charactersWithRefs.length > 0;
 
@@ -137,13 +169,21 @@ export default function StoryboardPage() {
   const step1Status: StepStatus =
     totalShots > 0 ? "completed" : "active";
   const step2Status: StepStatus =
-    generationMode === "reference"
-      ? "completed"
-      : totalShots === 0
-        ? "pending"
+    totalShots === 0
+      ? "pending"
+      : generationMode === "reference"
+        ? shotsWithSceneFrames === totalShots
+          ? "completed"
+          : "active"
         : shotsWithFrames === totalShots
           ? "completed"
           : "active";
+  const stepPromptStatus: StepStatus =
+    totalShots === 0 || shotsWithFrameAny === 0
+      ? "pending"
+      : shotsWithVideoPrompts === totalShots
+        ? "completed"
+        : "active";
   const step3Status: StepStatus =
     totalShots === 0
       ? "pending"
@@ -161,7 +201,7 @@ export default function StoryboardPage() {
               ? "active"
               : "pending";
 
-  const anyGenerating = generating || generatingFrames || generatingVideos || generatingSceneFrames;
+  const anyGenerating = generating || generatingFrames || generatingVideos || generatingSceneFrames || generatingVideoPrompts;
 
   async function handleGenerateShots() {
     if (!project) return;
@@ -285,6 +325,33 @@ export default function StoryboardPage() {
     fetchProject(project.id);
   }
 
+  async function handleBatchGenerateVideoPrompts() {
+    if (!project) return;
+    setGeneratingVideoPrompts(true);
+
+    try {
+      const response = await apiFetch(`/api/projects/${project.id}/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "batch_video_prompt",
+          payload: { versionId: selectedVersionId },
+          modelConfig: getModelConfig(),
+        }),
+      });
+      const data = await response.json() as { results: Array<{ status: string }> };
+      if (data.results?.some((r) => r.status === "error")) {
+        toast.warning(t("common.batchPartialFailed"));
+      }
+    } catch (err) {
+      console.error("Batch video prompt error:", err);
+      toast.error(err instanceof Error ? err.message : t("common.generationFailed"));
+    }
+
+    setGeneratingVideoPrompts(false);
+    fetchProject(project.id);
+  }
+
   async function handleBatchGenerateReferenceVideos(overwrite = false) {
     if (!project) return;
     if (!videoGuard()) return;
@@ -396,8 +463,10 @@ export default function StoryboardPage() {
             status={step1Status}
             icon={Sparkles}
             isLast={false}
+            isActive={activeStep === 1}
+            onClick={() => { manualStepRef.current = true; setActiveStep(1); }}
           />
-          {generationMode === "keyframe" && (
+          {generationMode === "keyframe" ? (
             <WorkflowStep
               step={2}
               label={t("project.workflowStepFrames")}
@@ -412,10 +481,47 @@ export default function StoryboardPage() {
               status={step2Status}
               icon={ImageIcon}
               isLast={false}
+              isActive={activeStep === 2}
+              onClick={() => { manualStepRef.current = true; setActiveStep(2); }}
+            />
+          ) : (
+            <WorkflowStep
+              step={2}
+              label={t("project.workflowStepSceneFrames")}
+              count={
+                totalShots > 0
+                  ? t("project.workflowSceneFramesCount", {
+                      completed: shotsWithSceneFrames,
+                      total: totalShots,
+                    })
+                  : "—"
+              }
+              status={step2Status}
+              icon={ImageIcon}
+              isLast={false}
+              isActive={activeStep === 2}
+              onClick={() => { manualStepRef.current = true; setActiveStep(2); }}
             />
           )}
           <WorkflowStep
-            step={generationMode === "reference" ? 2 : 3}
+            step={3}
+            label={t("project.workflowStepVideoPrompts")}
+            count={
+              totalShots > 0
+                ? t("project.workflowVideoPromptsCount", {
+                    completed: shotsWithVideoPrompts,
+                    total: totalShots,
+                  })
+                : "—"
+            }
+            status={stepPromptStatus}
+            icon={Sparkles}
+            isLast={false}
+            isActive={activeStep === 3}
+            onClick={() => { manualStepRef.current = true; setActiveStep(3); }}
+          />
+          <WorkflowStep
+            step={4}
             label={t("project.workflowStepVideos")}
             count={
               totalShots > 0
@@ -428,54 +534,57 @@ export default function StoryboardPage() {
             status={step3Status}
             icon={VideoIcon}
             isLast
+            isActive={activeStep === 4}
+            onClick={() => { manualStepRef.current = true; setActiveStep(4); }}
           />
         </div>
 
-        {/* Action buttons row */}
-        <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-[--border-subtle] pt-4">
+        {/* Step action panel */}
+        <div className="mt-3 flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
           {/* Step 1: Generate shots */}
-          <InlineModelPicker capability="text" />
-          <Button
-            onClick={handleGenerateShots}
-            disabled={anyGenerating}
-            variant={step1Status === "completed" ? "outline" : "default"}
-            size="sm"
-          >
-            {generating ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Sparkles className="h-3.5 w-3.5" />
-            )}
-            {generating
-              ? t("common.generating")
-              : t("project.generateShots")}
-          </Button>
-
-          {versions.length > 0 && (
-            <select
-              value={selectedVersionId ?? ""}
-              onChange={(e) => {
-                const v = e.target.value;
-                setSelectedVersionId(v);
-                fetchProject(project!.id, v);
-              }}
-              className="h-8 w-36 rounded-lg border border-[--border-subtle] bg-transparent px-2 text-[13px] text-[--text-secondary] outline-none cursor-pointer hover:border-[--border-hover]"
-            >
-              {versions.map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.label}
-                </option>
-              ))}
-            </select>
+          {activeStep === 1 && (
+            <>
+              <InlineModelPicker capability="text" />
+              <Button
+                onClick={handleGenerateShots}
+                disabled={anyGenerating}
+                variant={step1Status === "completed" ? "outline" : "default"}
+                size="sm"
+              >
+                {generating ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3.5 w-3.5" />
+                )}
+                {generating ? t("common.generating") : t("project.generateShots")}
+              </Button>
+              {versions.length > 0 && (
+                <select
+                  value={selectedVersionId ?? ""}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setSelectedVersionId(v);
+                    fetchProject(project!.id, v);
+                  }}
+                  className="h-8 w-36 rounded-lg border border-[--border-subtle] bg-transparent px-2 text-[13px] text-[--text-secondary] outline-none cursor-pointer hover:border-[--border-hover]"
+                >
+                  {versions.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.label}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </>
           )}
 
-          {/* Step 2: Batch generate frames — keyframe mode only */}
-          {generationMode === "keyframe" && totalShots > 0 && (
+          {/* Step 2: Frames */}
+          {activeStep === 2 && generationMode === "keyframe" && (
             <>
               <InlineModelPicker capability="image" />
               <Button
                 onClick={() => handleBatchGenerateFrames(false)}
-                disabled={anyGenerating}
+                disabled={anyGenerating || totalShots === 0}
                 variant={step2Status === "completed" ? "outline" : "default"}
                 size="sm"
               >
@@ -490,30 +599,27 @@ export default function StoryboardPage() {
               </Button>
               <Button
                 onClick={() => handleBatchGenerateFrames(true)}
-                disabled={anyGenerating}
-                variant="outline"
-                size="sm"
+                disabled={anyGenerating || totalShots === 0}
+                variant="ghost"
+                size="icon"
+                title={t("project.batchGenerateFramesOverwrite")}
               >
                 {generatingFrames && generatingFramesOverwrite ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
-                  <ImageIcon className="h-3.5 w-3.5" />
+                  <RefreshCw className="h-3.5 w-3.5" />
                 )}
-                {generatingFrames && generatingFramesOverwrite
-                  ? t("common.generating")
-                  : t("project.batchGenerateFramesOverwrite")}
               </Button>
             </>
           )}
 
-          {/* Step 2b: Batch generate scene frames — reference mode only */}
-          {generationMode === "reference" && totalShots > 0 && hasReferenceImages && (
+          {activeStep === 2 && generationMode === "reference" && (
             <>
               <InlineModelPicker capability="image" />
               <Button
                 onClick={() => handleBatchGenerateSceneFrames(false)}
-                disabled={anyGenerating}
-                variant="outline"
+                disabled={anyGenerating || totalShots === 0 || !hasReferenceImages}
+                variant={step2Status === "completed" ? "outline" : "default"}
                 size="sm"
               >
                 {generatingSceneFrames && !sceneFramesOverwrite ? (
@@ -527,25 +633,42 @@ export default function StoryboardPage() {
               </Button>
               <Button
                 onClick={() => handleBatchGenerateSceneFrames(true)}
-                disabled={anyGenerating}
-                variant="outline"
-                size="sm"
+                disabled={anyGenerating || totalShots === 0 || !hasReferenceImages}
+                variant="ghost"
+                size="icon"
+                title={t("project.batchGenerateSceneFramesOverwrite")}
               >
                 {generatingSceneFrames && sceneFramesOverwrite ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
-                  <ImageIcon className="h-3.5 w-3.5" />
+                  <RefreshCw className="h-3.5 w-3.5" />
                 )}
-                {generatingSceneFrames && sceneFramesOverwrite
-                  ? t("common.generating")
-                  : t("project.batchGenerateSceneFramesOverwrite")}
               </Button>
             </>
           )}
 
-          {/* Step 3: Batch generate videos */}
-          {totalShots > 0 &&
-            (generationMode === "reference" ? hasReferenceImages : shotsWithFrames > 0) && (
+          {/* Step 3: Video prompts */}
+          {activeStep === 3 && (
+            <>
+              <InlineModelPicker capability="text" />
+              <Button
+                onClick={handleBatchGenerateVideoPrompts}
+                disabled={anyGenerating || shotsWithFrameAny === 0}
+                variant={stepPromptStatus === "completed" ? "outline" : "default"}
+                size="sm"
+              >
+                {generatingVideoPrompts ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3.5 w-3.5" />
+                )}
+                {generatingVideoPrompts ? t("common.generating") : t("project.batchGenerateVideoPrompts")}
+              </Button>
+            </>
+          )}
+
+          {/* Step 4: Videos + Preview */}
+          {activeStep === 4 && (
             <>
               <InlineModelPicker capability="video" />
               <VideoRatioPicker value={videoRatio} onChange={setVideoRatio} />
@@ -555,14 +678,14 @@ export default function StoryboardPage() {
                     ? handleBatchGenerateReferenceVideos(false)
                     : handleBatchGenerateVideos(false)
                 }
-                disabled={anyGenerating || (generationMode === "reference" && !hasReferenceImages)}
+                disabled={anyGenerating || totalShots === 0 || (generationMode === "reference" ? !hasReferenceImages : shotsWithFrames === 0)}
                 variant={step3Status === "completed" ? "outline" : "default"}
                 size="sm"
               >
                 {generatingVideos && !generatingVideosOverwrite ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
-                  <Sparkles className="h-3.5 w-3.5" />
+                  <VideoIcon className="h-3.5 w-3.5" />
                 )}
                 {generatingVideos && !generatingVideosOverwrite
                   ? t("common.generating")
@@ -576,31 +699,30 @@ export default function StoryboardPage() {
                     ? handleBatchGenerateReferenceVideos(true)
                     : handleBatchGenerateVideos(true)
                 }
-                disabled={anyGenerating || (generationMode === "reference" && !hasReferenceImages)}
-                variant="outline"
-                size="sm"
+                disabled={anyGenerating || totalShots === 0 || (generationMode === "reference" ? !hasReferenceImages : shotsWithFrames === 0)}
+                variant="ghost"
+                size="icon"
+                title={t("project.batchGenerateVideosOverwrite")}
               >
                 {generatingVideos && generatingVideosOverwrite ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
-                  <Sparkles className="h-3.5 w-3.5" />
+                  <RefreshCw className="h-3.5 w-3.5" />
                 )}
-                {generatingVideos && generatingVideosOverwrite
-                  ? t("common.generating")
-                  : t("project.batchGenerateVideosOverwrite")}
               </Button>
+              {totalShots > 0 && (
+                <>
+                  <div className="mx-1 h-5 w-px bg-[--border-subtle]" />
+                  <Link
+                    href={`/${locale}/project/${project!.id}/preview${selectedVersionId ? `?versionId=${selectedVersionId}` : ""}`}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium shadow-xs hover:bg-accent hover:text-accent-foreground"
+                  >
+                    <Film className="h-3.5 w-3.5" />
+                    {t("project.preview")}
+                  </Link>
+                </>
+              )}
             </>
-          )}
-
-          {/* Step 4: Go to Preview */}
-          {totalShots > 0 && (
-            <Link
-              href={`/${locale}/project/${project!.id}/preview${selectedVersionId ? `?versionId=${selectedVersionId}` : ""}`}
-              className="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium shadow-xs hover:bg-accent hover:text-accent-foreground"
-            >
-              <Film className="h-3.5 w-3.5" />
-              {t("project.preview")}
-            </Link>
           )}
         </div>
       </div>
@@ -636,6 +758,7 @@ export default function StoryboardPage() {
               firstFrame={shot.firstFrame}
               lastFrame={shot.lastFrame}
               sceneRefFrame={shot.sceneRefFrame}
+              videoPrompt={shot.videoPrompt}
               videoUrl={generationMode === "reference" ? shot.referenceVideoUrl : shot.videoUrl}
               status={
                 generationMode === "reference"
@@ -648,8 +771,10 @@ export default function StoryboardPage() {
               }
               dialogues={shot.dialogues || []}
               onUpdate={() => fetchProject(project.id)}
+              activeStep={activeStep}
               batchGeneratingFrames={generatingFrames}
               batchGeneratingVideo={generatingVideos}
+              batchGeneratingVideoPrompts={generatingVideoPrompts}
               characterDescriptions={characterDescriptions}
               generationMode={generationMode}
               batchGeneratingReferenceVideo={generationMode === "reference" ? generatingVideos : undefined}

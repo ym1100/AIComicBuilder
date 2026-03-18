@@ -31,8 +31,9 @@ import {
   buildLastFramePrompt,
 } from "@/lib/ai/prompts/frame-generate";
 import { buildSceneFramePrompt } from "@/lib/ai/prompts/scene-frame-generate";
-import { resolveImageProvider, resolveVideoProvider } from "@/lib/ai/provider-factory";
+import { resolveImageProvider, resolveVideoProvider, resolveAIProvider } from "@/lib/ai/provider-factory";
 import { buildVideoPrompt, buildReferenceVideoPrompt } from "@/lib/ai/prompts/video-generate";
+import { REF_VIDEO_PROMPT_SYSTEM, buildRefVideoPromptRequest } from "@/lib/ai/prompts/ref-video-prompt-generate";
 import { buildCharacterTurnaroundPrompt } from "@/lib/ai/prompts/character-image";
 import { assembleVideo } from "@/lib/video/ffmpeg";
 
@@ -146,6 +147,14 @@ export async function POST(
 
   if (action === "batch_reference_video") {
     return handleBatchReferenceVideo(projectId, payload, modelConfig);
+  }
+
+  if (action === "single_video_prompt") {
+    return handleSingleVideoPrompt(projectId, payload, modelConfig);
+  }
+
+  if (action === "batch_video_prompt") {
+    return handleBatchVideoPrompt(projectId, payload, modelConfig);
   }
 
   if (action === "video_assemble") {
@@ -946,10 +955,8 @@ async function handleSingleVideoGenerate(
     const ratio = (payload?.ratio as string) || "16:9";
 
     const videoScript = shot.videoScript || shot.motionScript || shot.prompt || "";
-    const videoPrompt = buildVideoPrompt({
+    const videoPrompt = shot.videoPrompt || buildVideoPrompt({
       videoScript,
-      motionScript: shot.motionScript ?? undefined,
-      characterDescriptions: characterDescriptions || undefined,
       cameraDirection: shot.cameraDirection || "static",
       startFrameDesc: shot.startFrameDesc ?? undefined,
       endFrameDesc: shot.endFrameDesc ?? undefined,
@@ -1043,7 +1050,7 @@ async function handleBatchVideoGenerate(
       }));
 
       const videoScript = shot.videoScript || shot.motionScript || shot.prompt || "";
-      const videoPrompt = buildVideoPrompt({
+      const videoPrompt = shot.videoPrompt || buildVideoPrompt({
         videoScript,
         cameraDirection: shot.cameraDirection || "static",
         startFrameDesc: shot.startFrameDesc ?? undefined,
@@ -1349,14 +1356,36 @@ async function handleSingleReferenceVideo(
     // Step 2: Generate video using scene frame as initial image
     const videoProvider = resolveVideoProvider(modelConfig, versionedUploadDir);
 
-    const videoScript = shot.videoScript || shot.motionScript || shot.prompt || "";
-    const videoPrompt = buildReferenceVideoPrompt({
-      videoScript,
-      motionScript: shot.motionScript ?? undefined,
-      characterDescriptions: characterDescriptions || undefined,
-      cameraDirection: shot.cameraDirection || "static",
-      dialogues: dialogueList.length > 0 ? dialogueList : undefined,
-    });
+    // Step 2b: Use stored videoPrompt if available; otherwise generate from scene frame via vision AI
+    let videoPrompt: string;
+    if (shot.videoPrompt) {
+      videoPrompt = shot.videoPrompt;
+    } else {
+      const textProvider = resolveAIProvider(modelConfig);
+      try {
+        const motionContext = shot.motionScript || shot.videoScript || shot.prompt || "";
+        const promptRequest = buildRefVideoPromptRequest({
+          motionScript: motionContext,
+          cameraDirection: shot.cameraDirection || "static",
+          duration: shot.duration ?? 10,
+          dialogues: dialogueList.length > 0 ? dialogueList : undefined,
+        });
+        const rawPrompt = await textProvider.generateText(promptRequest, {
+          systemPrompt: REF_VIDEO_PROMPT_SYSTEM,
+          images: [sceneFramePath],
+          temperature: 0.7,
+        });
+        videoPrompt = `Duration: ${shot.duration ?? 10}s.\n\n${rawPrompt.trim()}`;
+      } catch (err) {
+        console.warn("[SingleReferenceVideo] Vision prompt generation failed, falling back:", err);
+        videoPrompt = buildReferenceVideoPrompt({
+          videoScript: shot.videoScript || shot.motionScript || shot.prompt || "",
+          cameraDirection: shot.cameraDirection || "static",
+          duration: shot.duration ?? 10,
+          dialogues: dialogueList.length > 0 ? dialogueList : undefined,
+        });
+      }
+    }
 
     console.log(`[SingleReferenceVideo] Shot ${shot.sequence}: generating video from scene frame`);
 
@@ -1448,6 +1477,7 @@ async function handleBatchReferenceVideo(
 
   const imageProvider = resolveImageProvider(modelConfig, versionedUploadDir);
   const videoProvider = resolveVideoProvider(modelConfig, versionedUploadDir);
+  const textProvider = resolveAIProvider(modelConfig);
   const ratio = (payload?.ratio as string) || "16:9";
 
   await Promise.all(
@@ -1496,15 +1526,35 @@ async function handleBatchReferenceVideo(
       // Save scene frame for display (separate field — does not pollute firstFrame used by keyframe mode)
       await db.update(shots).set({ sceneRefFrame: sceneFramePath }).where(eq(shots.id, shot.id));
 
-      // Step 2: Generate video using scene frame as initial image
-      const videoScript = shot.videoScript || shot.motionScript || shot.prompt || "";
-      const videoPrompt = buildReferenceVideoPrompt({
-        videoScript,
-        motionScript: shot.motionScript ?? undefined,
-        characterDescriptions: characterDescriptions || undefined,
-        cameraDirection: shot.cameraDirection || "static",
-        dialogues: dialogueList.length > 0 ? dialogueList : undefined,
-      });
+      // Step 2: Use stored videoPrompt if available; otherwise generate from scene frame via vision AI
+      let videoPrompt: string;
+      if (shot.videoPrompt) {
+        videoPrompt = shot.videoPrompt;
+      } else {
+        try {
+          const motionContext = shot.motionScript || shot.videoScript || shot.prompt || "";
+          const promptRequest = buildRefVideoPromptRequest({
+            motionScript: motionContext,
+            cameraDirection: shot.cameraDirection || "static",
+            duration: shot.duration ?? 10,
+            dialogues: dialogueList.length > 0 ? dialogueList : undefined,
+          });
+          const rawPrompt = await textProvider.generateText(promptRequest, {
+            systemPrompt: REF_VIDEO_PROMPT_SYSTEM,
+            images: [sceneFramePath],
+            temperature: 0.7,
+          });
+          videoPrompt = `Duration: ${shot.duration ?? 10}s.\n\n${rawPrompt.trim()}`;
+        } catch (err) {
+          console.warn("[BatchReferenceVideo] Vision prompt generation failed, falling back:", err);
+          videoPrompt = buildReferenceVideoPrompt({
+            videoScript: shot.videoScript || shot.motionScript || shot.prompt || "",
+            cameraDirection: shot.cameraDirection || "static",
+            duration: shot.duration ?? 10,
+            dialogues: dialogueList.length > 0 ? dialogueList : undefined,
+          });
+        }
+      }
 
       console.log(`[BatchReferenceVideo] Shot ${shot.sequence}: generating video from scene frame`);
 
@@ -1546,7 +1596,19 @@ async function handleBatchReferenceVideo(
 async function handleVideoAssembleSync(projectId: string, payload?: Record<string, unknown>) {
   const [project] = await db.select({ generationMode: projects.generationMode }).from(projects).where(eq(projects.id, projectId));
 
-  const versionId = payload?.versionId as string | undefined;
+  let versionId = payload?.versionId as string | undefined;
+
+  // If no versionId provided, fall back to the latest version for this project
+  if (!versionId) {
+    const [latestVersion] = await db
+      .select({ id: storyboardVersions.id })
+      .from(storyboardVersions)
+      .where(eq(storyboardVersions.projectId, projectId))
+      .orderBy(desc(storyboardVersions.versionNum))
+      .limit(1);
+    versionId = latestVersion?.id;
+  }
+
   const projectShots = await db
     .select()
     .from(shots)
@@ -1604,4 +1666,115 @@ async function handleVideoAssembleSync(projectId: string, payload?: Record<strin
     console.error("[VideoAssemble] Error:", err);
     return NextResponse.json({ status: "error", error: extractErrorMessage(err) }, { status: 500 });
   }
+}
+
+// ─── Generate Video Prompt (single) ──────────────────────────────────────────
+
+async function handleSingleVideoPrompt(
+  projectId: string,
+  payload?: Record<string, unknown>,
+  modelConfig?: ModelConfig
+) {
+  const shotId = payload?.shotId as string;
+  if (!shotId) return NextResponse.json({ error: "shotId required" }, { status: 400 });
+
+  const [shot] = await db.select().from(shots).where(eq(shots.id, shotId)).limit(1);
+  if (!shot) return NextResponse.json({ error: "Shot not found" }, { status: 404 });
+
+  // Use sceneRefFrame for reference mode, or first/last frame for keyframe mode
+  const frameForVision = shot.sceneRefFrame || shot.firstFrame || shot.lastFrame;
+  if (!frameForVision) {
+    return NextResponse.json({ error: "No frame available. Generate frames first." }, { status: 400 });
+  }
+
+  const shotCharacters = await db.select().from(characters).where(eq(characters.projectId, shot.projectId));
+  const shotDialogues = await db
+    .select({ text: dialogues.text, characterId: dialogues.characterId, sequence: dialogues.sequence })
+    .from(dialogues)
+    .where(eq(dialogues.shotId, shotId))
+    .orderBy(asc(dialogues.sequence));
+  const dialogueList = shotDialogues.map((d) => ({
+    characterName: shotCharacters.find((c) => c.id === d.characterId)?.name ?? "Unknown",
+    text: d.text,
+  }));
+
+  try {
+    const textProvider = resolveAIProvider(modelConfig);
+    const motionContext = shot.motionScript || shot.videoScript || shot.prompt || "";
+    const promptRequest = buildRefVideoPromptRequest({
+      motionScript: motionContext,
+      cameraDirection: shot.cameraDirection || "static",
+      duration: shot.duration ?? 10,
+      dialogues: dialogueList.length > 0 ? dialogueList : undefined,
+    });
+    const rawPrompt = await textProvider.generateText(promptRequest, {
+      systemPrompt: REF_VIDEO_PROMPT_SYSTEM,
+      images: [frameForVision],
+      temperature: 0.7,
+    });
+    const videoPrompt = `Duration: ${shot.duration ?? 10}s.\n\n${rawPrompt.trim()}`;
+    await db.update(shots).set({ videoPrompt }).where(eq(shots.id, shotId));
+    return NextResponse.json({ shotId, videoPrompt, status: "ok" });
+  } catch (err) {
+    console.error("[SingleVideoPrompt] Error:", err);
+    return NextResponse.json({ status: "error", error: extractErrorMessage(err) }, { status: 500 });
+  }
+}
+
+// ─── Generate Video Prompt (batch) ───────────────────────────────────────────
+
+async function handleBatchVideoPrompt(
+  projectId: string,
+  payload?: Record<string, unknown>,
+  modelConfig?: ModelConfig
+) {
+  const batchVersionId = payload?.versionId as string | undefined;
+
+  const batchShots = batchVersionId
+    ? await db.select().from(shots).where(and(eq(shots.projectId, projectId), eq(shots.versionId, batchVersionId))).orderBy(asc(shots.sequence))
+    : await db.select().from(shots).where(eq(shots.projectId, projectId)).orderBy(asc(shots.sequence));
+
+  const batchCharacters = await db.select().from(characters).where(eq(characters.projectId, projectId));
+
+  // Only process shots that have at least one frame
+  const eligible = batchShots.filter((s) => s.sceneRefFrame || s.firstFrame || s.lastFrame);
+
+  const textProvider = resolveAIProvider(modelConfig);
+  const results: Array<{ shotId: string; status: string }> = [];
+
+  for (const shot of eligible) {
+    try {
+      const frameForVision = shot.sceneRefFrame || shot.firstFrame || shot.lastFrame;
+      const shotDialogues = await db
+        .select({ text: dialogues.text, characterId: dialogues.characterId, sequence: dialogues.sequence })
+        .from(dialogues)
+        .where(eq(dialogues.shotId, shot.id))
+        .orderBy(asc(dialogues.sequence));
+      const dialogueList = shotDialogues.map((d) => ({
+        characterName: batchCharacters.find((c) => c.id === d.characterId)?.name ?? "Unknown",
+        text: d.text,
+      }));
+
+      const motionContext = shot.motionScript || shot.videoScript || shot.prompt || "";
+      const promptRequest = buildRefVideoPromptRequest({
+        motionScript: motionContext,
+        cameraDirection: shot.cameraDirection || "static",
+        duration: shot.duration ?? 10,
+        dialogues: dialogueList.length > 0 ? dialogueList : undefined,
+      });
+      const rawPrompt = await textProvider.generateText(promptRequest, {
+        systemPrompt: REF_VIDEO_PROMPT_SYSTEM,
+        images: [frameForVision!],
+        temperature: 0.7,
+      });
+      const videoPrompt = `Duration: ${shot.duration ?? 10}s.\n\n${rawPrompt.trim()}`;
+      await db.update(shots).set({ videoPrompt }).where(eq(shots.id, shot.id));
+      results.push({ shotId: shot.id, status: "ok" });
+    } catch (err) {
+      console.error(`[BatchVideoPrompt] Shot ${shot.sequence} failed:`, err);
+      results.push({ shotId: shot.id, status: "error" });
+    }
+  }
+
+  return NextResponse.json({ results, status: "ok" });
 }

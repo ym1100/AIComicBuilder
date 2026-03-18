@@ -62,6 +62,7 @@ export const shots = sqliteTable("shots", {
   lastFrameUrl: text("last_frame_url"),
   sceneRefFrame: text("scene_ref_frame"),
   videoScript: text("video_script"),
+  videoPrompt: text("video_prompt"),
   versionId: text("version_id").references(() => storyboardVersions.id, {
     onDelete: "cascade",
   }),

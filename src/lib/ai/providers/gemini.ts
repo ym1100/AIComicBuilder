@@ -25,9 +25,28 @@ export class GeminiProvider implements AIProvider {
 
   async generateText(prompt: string, options?: TextOptions): Promise<string> {
     const model = options?.model || this.defaultModel;
+
+    type Part = { text: string } | { inlineData: { mimeType: string; data: string } };
+    const parts: Part[] = [];
+
+    if (options?.images?.length) {
+      for (const imgPath of options.images) {
+        try {
+          const resolved = path.resolve(imgPath);
+          if (fs.existsSync(resolved)) {
+            const data = fs.readFileSync(resolved).toString("base64");
+            const ext = path.extname(resolved).toLowerCase();
+            const mimeType = ext === ".png" ? "image/png" : "image/jpeg";
+            parts.push({ inlineData: { mimeType, data } });
+          }
+        } catch { /* skip */ }
+      }
+    }
+    parts.push({ text: prompt });
+
     const response = await this.client.models.generateContent({
       model,
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      contents: [{ role: "user", parts }],
       config: {
         temperature: options?.temperature ?? 0.7,
         maxOutputTokens: options?.maxTokens,
