@@ -991,18 +991,19 @@ async function handleSingleReferenceVideo(
     .from(characters)
     .where(eq(characters.projectId, shot.projectId));
 
-  const firstCharRefImage = projectCharacters
+  // Collect all character reference images (Toonflow pattern: all chars, not just first)
+  const allCharRefs = projectCharacters
     .filter((c) => !!c.referenceImage)
-    .map((c) => c.referenceImage as string)[0];
+    .map((c) => ({ name: c.name, imagePath: c.referenceImage as string }));
 
-  if (!firstCharRefImage) {
+  if (allCharRefs.length === 0) {
     return NextResponse.json(
       { error: "No character reference images available. Please generate character reference images first." },
       { status: 400 }
     );
   }
 
-  // Use previous shot's lastFrameUrl for chaining; fall back to character reference image
+  // Use previous shot's lastFrameUrl for chaining; fall back to first character reference image
   const allShotsForChain = await db
     .select({ id: shots.id, sequence: shots.sequence, lastFrameUrl: shots.lastFrameUrl })
     .from(shots)
@@ -1011,9 +1012,22 @@ async function handleSingleReferenceVideo(
 
   const currentIdx = allShotsForChain.findIndex((s) => s.id === shotId);
   const previousShot = currentIdx > 0 ? allShotsForChain[currentIdx - 1] : null;
-  const initialImage = previousShot?.lastFrameUrl || firstCharRefImage;
 
-  console.log(`[SingleReferenceVideo] Shot ${shot.sequence}: initialImage=${previousShot?.lastFrameUrl ? "prev lastFrame" : "charRef"}`);
+  // 图片1 = temporal chain anchor (prevLastFrame or first char)
+  // characterRefs = images injected as 图片2+
+  const initialImage = previousShot?.lastFrameUrl || allCharRefs[0].imagePath;
+  const characterRefs = previousShot?.lastFrameUrl ? allCharRefs : allCharRefs.slice(1);
+
+  // Toonflow mapping: correct indices based on whether prevLastFrame is used
+  const charMapping = previousShot?.lastFrameUrl
+    ? allCharRefs.map((c, i) => `${c.name}=图片${i + 2}`)
+    : allCharRefs.map((c, i) => `${c.name}=图片${i + 1}`);
+  const charRefMapping =
+    charMapping.length > 0 ? `\n角色参考对照：${charMapping.join("，")}` : "";
+
+  console.log(
+    `[SingleReferenceVideo] Shot ${shot.sequence}: initialImage=${previousShot?.lastFrameUrl ? "prev lastFrame" : "charRef"}, characterRefs=${characterRefs.length}, mapping="${charRefMapping.trim()}"`
+  );
 
   const videoProvider = resolveVideoProvider(modelConfig);
   const ratio = (payload?.ratio as string) || "16:9";
@@ -1032,22 +1046,24 @@ async function handleSingleReferenceVideo(
     text: d.text,
   }));
 
-  const videoPrompt = shot.motionScript
-    ? buildVideoPrompt({
-        sceneDescription: shot.prompt || "",
-        motionScript: shot.motionScript,
-        cameraDirection: shot.cameraDirection || "static",
-        duration: shot.duration ?? 10,
-        characterDescriptions,
-        dialogues: dialogueList.length > 0 ? dialogueList : undefined,
-      })
-    : shot.prompt || "";
+  const videoPrompt =
+    (shot.motionScript
+      ? buildVideoPrompt({
+          sceneDescription: shot.prompt || "",
+          motionScript: shot.motionScript,
+          cameraDirection: shot.cameraDirection || "static",
+          duration: shot.duration ?? 10,
+          characterDescriptions,
+          dialogues: dialogueList.length > 0 ? dialogueList : undefined,
+        })
+      : shot.prompt || "") + charRefMapping;
 
   try {
     await db.update(shots).set({ status: "generating" }).where(eq(shots.id, shotId));
 
     const result = await videoProvider.generateVideo({
       initialImage,
+      characterRefs,
       prompt: videoPrompt,
       duration: shot.duration ?? 10,
       ratio,
@@ -1102,11 +1118,12 @@ async function handleBatchReferenceVideo(
     .from(characters)
     .where(eq(characters.projectId, projectId));
 
-  const firstCharRefImage = projectCharacters
+  // Collect all character reference images
+  const allCharRefs = projectCharacters
     .filter((c) => !!c.referenceImage)
-    .map((c) => c.referenceImage as string)[0];
+    .map((c) => ({ name: c.name, imagePath: c.referenceImage as string }));
 
-  if (!firstCharRefImage) {
+  if (allCharRefs.length === 0) {
     return NextResponse.json(
       { error: "No character reference images available." },
       { status: 400 }
@@ -1146,8 +1163,20 @@ async function handleBatchReferenceVideo(
   }
 
   for (const shot of eligible) {
-    const initialImage = prevLastFrameUrl || firstCharRefImage;
-    console.log(`[BatchReferenceVideo] Shot ${shot.sequence}: initialImage=${prevLastFrameUrl ? "prev lastFrame" : "charRef"}`);
+    // 图片1 = temporal chain anchor; 图片2+ = character refs
+    const initialImage = prevLastFrameUrl || allCharRefs[0].imagePath;
+    const characterRefs = prevLastFrameUrl ? allCharRefs : allCharRefs.slice(1);
+
+    // Toonflow mapping with correct indices
+    const charMapping = prevLastFrameUrl
+      ? allCharRefs.map((c, i) => `${c.name}=图片${i + 2}`)
+      : allCharRefs.map((c, i) => `${c.name}=图片${i + 1}`);
+    const charRefMapping =
+      charMapping.length > 0 ? `\n角色参考对照：${charMapping.join("，")}` : "";
+
+    console.log(
+      `[BatchReferenceVideo] Shot ${shot.sequence}: initialImage=${prevLastFrameUrl ? "prev lastFrame" : "charRef"}, characterRefs=${characterRefs.length}`
+    );
 
     try {
       const shotDialogues = await db
@@ -1160,19 +1189,21 @@ async function handleBatchReferenceVideo(
         text: d.text,
       }));
 
-      const videoPrompt = shot.motionScript
-        ? buildVideoPrompt({
-            sceneDescription: shot.prompt || "",
-            motionScript: shot.motionScript,
-            cameraDirection: shot.cameraDirection || "static",
-            duration: shot.duration ?? 10,
-            characterDescriptions,
-            dialogues: dialogueList.length > 0 ? dialogueList : undefined,
-          })
-        : shot.prompt || "";
+      const videoPrompt =
+        (shot.motionScript
+          ? buildVideoPrompt({
+              sceneDescription: shot.prompt || "",
+              motionScript: shot.motionScript,
+              cameraDirection: shot.cameraDirection || "static",
+              duration: shot.duration ?? 10,
+              characterDescriptions,
+              dialogues: dialogueList.length > 0 ? dialogueList : undefined,
+            })
+          : shot.prompt || "") + charRefMapping;
 
       const result = await videoProvider.generateVideo({
         initialImage,
+        characterRefs,
         prompt: videoPrompt,
         duration: shot.duration ?? 10,
         ratio,
@@ -1195,7 +1226,7 @@ async function handleBatchReferenceVideo(
     } catch (err) {
       console.error(`[BatchReferenceVideo] Error for shot ${shot.sequence}:`, err);
       await db.update(shots).set({ status: "failed" }).where(eq(shots.id, shot.id));
-      // On error, reset prevLastFrameUrl so next shot uses charRef (safer)
+      // On error, reset prevLastFrameUrl so next shot falls back to first charRef (safer)
       prevLastFrameUrl = null;
       results.push({
         shotId: shot.id,
