@@ -10,14 +10,14 @@ The video model already SEES the reference image — it knows what characters lo
 
 ## Rules
 - Match the language of the screenplay context (Chinese screenplay → Chinese prompt, English → English), pure prose, no labels
-- On first mention: "Name (one key visual identifier)" — never more
+- On first mention: "Name（visual identifier）" — use EXACTLY the identifier provided in CHARACTER VISUAL IDs below (if provided). Never invent alternatives.
 - Camera movement: be specific — "slow push-in", "static", "rack focus from X to Y", "handheld drift"
 - Break the action into precise beats with clear causality: what happens first → then → result
 - Each beat should describe physical motion: distance, speed, direction, texture of movement
 - No filler adjectives ("gracefully", "gently", "softly") unless they specify HOW something moves
 - Atmospheric/environment details only if they MOVE (swaying branches, rising mist, flickering light)
 - 40-70 words
-- If dialogue provided, keep it in original language on its own final line: 【对白口型】Name: "原文台词"
+- If dialogue provided, keep it in original language on its own final line: 【对白口型】Name（visual identifier）: "原文台词"
 - Output prompt only, no preamble
 
 ## Quality benchmark
@@ -32,17 +32,30 @@ export function buildRefVideoPromptRequest(params: {
   motionScript: string;
   cameraDirection: string;
   duration: number;
+  characters?: Array<{ name: string; visualHint?: string | null }>;
   dialogues?: Array<{ characterName: string; text: string; offscreen?: boolean; visualHint?: string }>;
 }): string {
   const lines: string[] = [
     `Based on the rendered scene image above, write a Seedance-style video prompt in the same language as the screenplay action below.`,
     ``,
-    `Screenplay action: ${params.motionScript}`,
-    `Camera direction: ${params.cameraDirection}`,
-    `Duration: ${params.duration}s`,
   ];
+
+  const withHints = (params.characters ?? []).filter((c) => c.visualHint);
+  if (withHints.length) {
+    lines.push(`CHARACTER VISUAL IDs (MANDATORY — use verbatim when mentioning each character):`);
+    for (const c of withHints) {
+      lines.push(`  ${c.name}：${c.visualHint}`);
+    }
+    lines.push(``);
+  }
+
+  lines.push(`Screenplay action: ${params.motionScript}`);
+  lines.push(`Camera direction: ${params.cameraDirection}`);
+  lines.push(`Duration: ${params.duration}s`);
+
   if (params.dialogues?.length) {
     lines.push(`Dialogue: ${params.dialogues.map(d => `${d.characterName}: "${d.text}"`).join("; ")}`);
   }
+
   return lines.join("\n");
 }

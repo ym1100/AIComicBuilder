@@ -21,6 +21,7 @@ export async function handleCharacterExtract(task: Task) {
   const extracted = JSON.parse(result) as Array<{
     name: string;
     description: string;
+    visualHint?: string;
   }>;
 
   const created = [];
@@ -33,6 +34,7 @@ export async function handleCharacterExtract(task: Task) {
         projectId: payload.projectId,
         name: char.name,
         description: char.description,
+        visualHint: char.visualHint ?? "",
       })
       .returning();
     created.push(record);

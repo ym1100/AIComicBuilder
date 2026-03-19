@@ -35,9 +35,6 @@ export async function handleVideoGenerate(task: Task) {
     .select()
     .from(characters)
     .where(eq(characters.projectId, shot.projectId));
-  const characterDescriptions = projectCharacters
-    .map((c) => `${c.name}: ${c.description}`)
-    .join("\n");
 
   const versionedUploadDir = await getVersionedUploadDirFromPipeline(shot.versionId);
   const videoProvider = resolveVideoProvider(payload.modelConfig, versionedUploadDir);
@@ -58,6 +55,7 @@ export async function handleVideoGenerate(task: Task) {
     startFrameDesc: shot.startFrameDesc ?? undefined,
     endFrameDesc: shot.endFrameDesc ?? undefined,
     duration: effectiveDuration,
+    characters: projectCharacters,
   });
 
   const result = await videoProvider.generateVideo({

@@ -30,13 +30,19 @@ const GETTERS: Record<Capability, "defaultTextModel" | "defaultImageModel" | "de
 
 interface InlineModelPickerProps {
   capability: Capability;
+  value?: ModelRef | null;
+  onChange?: (ref: ModelRef) => void;
 }
 
-export function InlineModelPicker({ capability }: InlineModelPickerProps) {
+export function InlineModelPicker({ capability, value: controlledValue, onChange }: InlineModelPickerProps) {
   const providers = useModelStore((s) => s.providers);
-  const value = useModelStore((s) => s[GETTERS[capability]]);
-  const setter = useModelStore((s) => s[SETTERS[capability]]);
+  const globalValue = useModelStore((s) => s[GETTERS[capability]]);
+  const globalSetter = useModelStore((s) => s[SETTERS[capability]]);
+  const isControlled = onChange !== undefined;
+  const value = isControlled ? controlledValue : globalValue;
+  const setter = isControlled ? onChange : globalSetter;
   const [open, setOpen] = useState(false);
+  const [dropUp, setDropUp] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const options = useMemo(() => {
@@ -56,12 +62,12 @@ export function InlineModelPicker({ capability }: InlineModelPickerProps) {
     return result;
   }, [providers, capability]);
 
-  // Auto-select first option if nothing is selected
+  // Auto-select first option if nothing is selected (only in uncontrolled mode)
   useEffect(() => {
-    if (!value && options.length > 0) {
-      setter({ providerId: options[0].providerId, modelId: options[0].modelId } as ModelRef);
+    if (!isControlled && !value && options.length > 0) {
+      globalSetter({ providerId: options[0].providerId, modelId: options[0].modelId } as ModelRef);
     }
-  }, [value, options, setter]);
+  }, [isControlled, value, options, globalSetter]);
 
   // Close on outside click
   useEffect(() => {
@@ -102,7 +108,13 @@ export function InlineModelPicker({ capability }: InlineModelPickerProps) {
       {/* Trigger */}
       <button
         type="button"
-        onClick={() => setOpen(!open)}
+        onClick={() => {
+          if (!open && containerRef.current) {
+            const rect = containerRef.current.getBoundingClientRect();
+            setDropUp(rect.top > window.innerHeight / 2);
+          }
+          setOpen(!open);
+        }}
         className="flex items-center gap-1.5 rounded-lg border border-[--border-subtle] bg-white px-2 py-1 transition-colors hover:border-[--border-hover]"
       >
         <div
@@ -120,7 +132,7 @@ export function InlineModelPicker({ capability }: InlineModelPickerProps) {
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute left-0 bottom-full z-50 mb-1 min-w-[200px] overflow-hidden rounded-xl border border-[--border-subtle] bg-white py-1 shadow-lg">
+        <div className={`absolute left-0 z-50 min-w-[200px] overflow-hidden rounded-xl border border-[--border-subtle] bg-white py-1 shadow-lg ${dropUp ? "bottom-full mb-1" : "top-full mt-1"}`}>
           {options.map((opt) => {
             const key = `${opt.providerId}:${opt.modelId}`;
             const selected = key === currentKey;

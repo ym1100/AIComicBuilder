@@ -102,6 +102,7 @@ def submit_text2video(base_url: str, token: str, model: str,
         "prompt": prompt,
         "duration": duration,
         "aspect_ratio": ratio,
+        "sound": "on",
     }
     if initial_image:
         body["reference_image"] = [to_base64(initial_image)]
@@ -179,7 +180,7 @@ def main():
         sys.exit(1)
 
     token = generate_kling_token(access_key, secret_key) if secret_key else access_key
-    model = args.model or os.environ.get("KLING_MODEL", "kling-v1-6")
+    model = args.model or os.environ.get("KLING_MODEL", "kling-v3")
 
     if args.mode == "image2video":
         task_id = submit_image2video(

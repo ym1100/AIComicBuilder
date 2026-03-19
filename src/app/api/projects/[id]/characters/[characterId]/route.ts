@@ -11,6 +11,7 @@ export async function PATCH(
   const body = (await request.json()) as Partial<{
     name: string;
     description: string;
+    visualHint: string;
   }>;
 
   const [updated] = await db

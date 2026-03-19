@@ -160,6 +160,7 @@ export default function CharactersPage() {
               projectId={project.id}
               name={char.name}
               description={char.description}
+              visualHint={char.visualHint ?? null}
               referenceImage={char.referenceImage}
               onUpdate={() => fetchProject(project.id)}
               batchGenerating={generatingImages}

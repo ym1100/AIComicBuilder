@@ -28,6 +28,7 @@ export const characters = sqliteTable("characters", {
     .references(() => projects.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   description: text("description").default(""),
+  visualHint: text("visual_hint").default(""),
   referenceImage: text("reference_image"),
 });
 

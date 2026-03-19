@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useTranslations } from "next-intl";
 import { uploadUrl } from "@/lib/utils/upload-url";
-import { useModelStore } from "@/stores/model-store";
+import { useModelStore, type ModelRef } from "@/stores/model-store";
 import { Sparkles, Loader2, Copy, Check } from "lucide-react";
 import { InlineModelPicker } from "@/components/editor/model-selector";
 import { apiFetch } from "@/lib/api-fetch";
@@ -20,6 +20,7 @@ interface CharacterCardProps {
   projectId: string;
   name: string;
   description: string;
+  visualHint: string | null;
   referenceImage: string | null;
   onUpdate: () => void;
   batchGenerating?: boolean;
@@ -30,25 +31,43 @@ export function CharacterCard({
   projectId,
   name,
   description,
+  visualHint,
   referenceImage,
   onUpdate,
   batchGenerating,
 }: CharacterCardProps) {
   const t = useTranslations();
   const getModelConfig = useModelStore((s) => s.getModelConfig);
+  const providers = useModelStore((s) => s.providers);
+  const defaultImageModel = useModelStore((s) => s.defaultImageModel);
+  const [imageModelRef, setImageModelRef] = useState<ModelRef | null>(() => defaultImageModel);
   const [editName, setEditName] = useState(name);
   const [editDesc, setEditDesc] = useState(description);
+  const [editVisualHint, setEditVisualHint] = useState(visualHint ?? "");
   const [generating, setGenerating] = useState(false);
   const [lightbox, setLightbox] = useState(false);
   const [copied, setCopied] = useState(false);
   const imageGuard = useModelGuard("image");
   const isGenerating = generating || (!!batchGenerating && !referenceImage);
 
+  function resolveImageRef(ref: ModelRef | null) {
+    if (!ref) return null;
+    const provider = providers.find((p) => p.id === ref.providerId);
+    if (!provider) return null;
+    return {
+      protocol: provider.protocol,
+      baseUrl: provider.baseUrl,
+      apiKey: provider.apiKey,
+      secretKey: provider.secretKey,
+      modelId: ref.modelId,
+    };
+  }
+
   async function handleSave() {
     await apiFetch(`/api/projects/${projectId}/characters/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: editName, description: editDesc }),
+      body: JSON.stringify({ name: editName, description: editDesc, visualHint: editVisualHint }),
     });
     onUpdate();
   }
@@ -63,7 +82,7 @@ export function CharacterCard({
         body: JSON.stringify({
           action: "single_character_image",
           payload: { characterId: id },
-          modelConfig: getModelConfig(),
+          modelConfig: { ...getModelConfig(), image: resolveImageRef(imageModelRef) },
         }),
       });
       await response.json();
@@ -111,8 +130,15 @@ export function CharacterCard({
           placeholder={t("character.description")}
           className="h-32 resize-none text-sm"
         />
+        <Input
+          value={editVisualHint}
+          onChange={(e) => setEditVisualHint(e.target.value)}
+          onBlur={handleSave}
+          placeholder={t("character.visualHint")}
+          className="h-8 text-xs text-muted-foreground"
+        />
         <div className="space-y-2">
-            <InlineModelPicker capability="image" />
+            <InlineModelPicker capability="image" value={imageModelRef} onChange={setImageModelRef} />
             <div className="flex gap-2">
               <Button
                 onClick={handleGenerateImage}

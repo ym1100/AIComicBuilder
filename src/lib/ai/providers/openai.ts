@@ -70,7 +70,9 @@ export class OpenAIProvider implements AIProvider {
       model,
       prompt,
       ...(isDallE && {
-        size: (options?.size as "1024x1024" | "1792x1024" | "1024x1792") || "1024x1024",
+        size: (["1024x1024", "1792x1024", "1024x1792"].includes(options?.size ?? "")
+          ? options!.size
+          : "1792x1024") as "1024x1024" | "1792x1024" | "1024x1792",
         quality: (options?.quality as "standard" | "hd") || "standard",
       }),
       ...compatParams,

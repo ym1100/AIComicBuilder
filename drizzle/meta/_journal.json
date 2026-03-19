@@ -64,6 +64,13 @@
       "when": 1774300000000,
       "tag": "0008_add_video_prompt",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1774400000000,
+      "tag": "0009_add_character_visual_hint",
+      "breakpoints": true
     }
   ]
 }

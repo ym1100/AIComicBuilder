@@ -16,6 +16,7 @@ JSON array only — no markdown fences, no commentary:
   {
     "name": "Character name exactly as written in screenplay",
     "description": "Full visual specification — single paragraph, all requirements below",
+    "visualHint": "2–4 word visual identifier for dialogue labels (e.g. 银发金瞳, red coat auburn hair). Must be instantly recognizable at a glance — focus on the most distinctive physical trait(s).",
     "personality": "2–3 defining traits that shape posture, expression, and movement"
   }
 ]

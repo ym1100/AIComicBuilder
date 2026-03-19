@@ -1,3 +1,11 @@
+type CharacterRef = { name: string; visualHint?: string | null };
+
+function buildCharacterLine(characters?: CharacterRef[]): string | null {
+  const withHints = (characters ?? []).filter((c) => c.visualHint);
+  if (!withHints.length) return null;
+  return withHints.map((c) => `${c.name}（${c.visualHint}）`).join("，");
+}
+
 /**
  * Prompt for reference-image-based video generation (Toonflow/Kling reference mode).
  * Seedance-style format: Shot description (prose) → Camera → 【对白口型】.
@@ -7,12 +15,19 @@ export function buildReferenceVideoPrompt(params: {
   videoScript: string;
   cameraDirection: string;
   duration?: number;
+  characters?: CharacterRef[];
   dialogues?: Array<{ characterName: string; text: string; offscreen?: boolean; visualHint?: string }>;
 }): string {
   const lines: string[] = [];
 
   if (params.duration) {
     lines.push(`Duration: ${params.duration}s.`);
+    lines.push(``);
+  }
+
+  const charLine = buildCharacterLine(params.characters);
+  if (charLine) {
+    lines.push(`角色形象：${charLine}。`);
     lines.push(``);
   }
 
@@ -43,12 +58,19 @@ export function buildVideoPrompt(params: {
   endFrameDesc?: string;
   sceneDescription?: string;       // kept for call-site compatibility, not used in output
   duration?: number;
+  characters?: CharacterRef[];
   dialogues?: Array<{ characterName: string; text: string; offscreen?: boolean; visualHint?: string }>;
 }): string {
   const lines: string[] = [];
 
   if (params.duration) {
     lines.push(`Duration: ${params.duration}s.`);
+    lines.push(``);
+  }
+
+  const charLine = buildCharacterLine(params.characters);
+  if (charLine) {
+    lines.push(`角色形象：${charLine}。`);
     lines.push(``);
   }
 

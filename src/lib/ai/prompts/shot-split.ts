@@ -125,7 +125,15 @@ Respond ONLY with the JSON array. No markdown fences. No commentary.`;
 
 export const SHOT_SPLIT_SYSTEM = buildShotSplitSystem(15);
 
-export function buildShotSplitPrompt(screenplay: string, characters: string): string {
+export function buildShotSplitPrompt(
+  screenplay: string,
+  characters: string,
+  characterVisualHints?: Array<{ name: string; visualHint: string }>
+): string {
+  const hintBlock = characterVisualHints?.length
+    ? `\n--- CHARACTER VISUAL IDENTIFIERS (MANDATORY) ---\n${characterVisualHints.map((c) => `${c.name}：${c.visualHint}`).join("\n")}\n--- END ---\n\nCRITICAL: Whenever a character appears in videoScript, motionScript, startFrame, or endFrame, you MUST write their name followed by their visual identifier in parentheses using EXACTLY the text above. Example: 天枢真君（银发金瞳）. Never invent alternative descriptions — always reuse the exact identifier string provided.`
+    : "";
+
   return `Decompose this screenplay into a professional shot list optimized for AI video generation. Each shot should have detailed startFrame and endFrame descriptions that an image generator can directly use, plus a motionScript describing the action between them.
 
 --- SCREENPLAY ---
@@ -135,7 +143,7 @@ ${screenplay}
 --- CHARACTER REFERENCE DESCRIPTIONS ---
 ${characters}
 --- END ---
-
+${hintBlock}
 Important: reference characters by their exact names and ensure their visual descriptions in startFrame/endFrame align with the character references above.
 
 IMPORTANT: Your output language MUST match the language of the screenplay above. If it is in Chinese, write all fields in Chinese (except cameraDirection).`;
