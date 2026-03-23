@@ -52,6 +52,8 @@ Retains `projectId` for convenience queries.
 |-----------|------|-------------|
 | `episodeId` | text FK → episodes | Episode this version belongs to |
 
+Versioning is scoped per-episode. Each episode has independent storyboard versions. Version creation, selection, and switching operate within a single episode's context.
+
 ### Modified: `tasks`
 
 | New Field | Type | Description |
@@ -93,6 +95,7 @@ When `character_extract` runs for an episode:
 - **Episode character page** (step 2 in pipeline): Shows merged list (main + current episode guests)
   - Main characters: editable but not deletable (greyed-out delete button)
   - Guest characters: fully editable, deletable, with "Promote to Main" button
+  - Deleting a guest character cascades to their dialogue lines in shots (inherited from existing FK cascade). Delete confirmation dialog should warn about this.
 
 ## Routes & Pages
 
@@ -140,7 +143,13 @@ Existing routes gain `episodeId` segment:
 
 - Shots, characters, generate APIs add `episodeId` parameter for filtering
 - `POST /api/projects/[id]/generate` body includes `episodeId`
+- `/api/projects/[id]/download` adds `episodeId` query param (downloads are per-episode since `finalVideoUrl` is on episodes)
 - Ownership verification unchanged (project-level userId check)
+
+### Edge Cases
+
+- A project must always have at least one episode. The delete API refuses to delete the last episode.
+- Character name matching during `character_extract` is AI-driven (the LLM decides whether a name is a variant of an existing character), not code-level string matching.
 
 ## State Management
 
