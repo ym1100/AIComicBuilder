@@ -19,8 +19,8 @@ Add episode (分集) management to AIComicBuilder. A project becomes a container
 | `status` | text | `draft` / `processing` / `completed` |
 | `generationMode` | text | `keyframe` / `reference` |
 | `finalVideoUrl` | text | Assembled video for this episode |
-| `createdAt` | text | Timestamp |
-| `updatedAt` | text | Timestamp |
+| `createdAt` | integer | Timestamp (consistent with existing schema convention) |
+| `updatedAt` | integer | Timestamp (consistent with existing schema convention) |
 
 ### Modified: `projects`
 
@@ -37,6 +37,7 @@ Project becomes a pure container: `id`, `userId`, `title`, `createdAt`, `updated
 
 - `scope = main`, `episodeId = null` → project-level, visible in all episodes
 - `scope = guest`, `episodeId = <id>` → episode-level, visible only in that episode
+- `episodeId` FK should have `ON DELETE CASCADE` so deleting an episode auto-removes its guest characters
 
 ### Modified: `shots`
 
