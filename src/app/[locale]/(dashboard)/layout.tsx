@@ -2,7 +2,7 @@ import { getTranslations } from "next-intl/server";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { LogoIcon } from "@/components/logo";
 import Link from "next/link";
-import { Settings, FileText } from "lucide-react";
+import { Settings, Wand2 } from "lucide-react";
 
 export default async function DashboardLayout({
   children,
@@ -28,7 +28,7 @@ export default async function DashboardLayout({
             className="flex h-8 w-8 items-center justify-center rounded-lg text-[--text-muted] transition-colors hover:bg-[--surface] hover:text-[--text-primary]"
             title={t("promptTemplates")}
           >
-            <FileText className="h-4 w-4" />
+            <Wand2 className="h-4 w-4" />
           </Link>
           <Link
             href="/settings"

@@ -4,7 +4,7 @@ import { PromptEditor } from "@/components/prompt-templates/prompt-editor";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, FileText } from "lucide-react";
+import { ArrowLeft, Wand2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 export default function PromptSettingsPage() {
@@ -30,7 +30,7 @@ export default function PromptSettingsPage() {
           </button>
           <div className="flex items-center gap-2">
             <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <FileText className="h-3.5 w-3.5" />
+              <Wand2 className="h-3.5 w-3.5" />
             </div>
             <div className="flex items-center gap-2">
               <span className="font-display text-sm font-semibold text-[--text-primary]">
