@@ -96,81 +96,31 @@ export function ProjectPromptCards({ projectId }: ProjectPromptCardsProps) {
   const [enabled, setEnabled] = useState(false);
   const [deletingKey, setDeletingKey] = useState<string | null>(null);
 
-  // Sentinel key used to persist the "enabled" toggle in DB
-  const ENABLED_SENTINEL = "__project_prompts_enabled__";
-
-  // Fetch registry + project overrides on mount
+  // Fetch registry + project overrides + project settings on mount
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [regResp, overResp] = await Promise.all([
+      const [regResp, overResp, projResp] = await Promise.all([
         apiFetch("/api/prompt-templates/registry"),
         apiFetch(`/api/projects/${projectId}/prompt-templates`),
+        apiFetch(`/api/projects/${projectId}`),
       ]);
       const regData: RegistryEntry[] = await regResp.json();
       const overData: ProjectPromptTemplate[] = await overResp.json();
+      const projData = await projResp.json();
       setRegistry(regData);
-      // Separate sentinel record from real overrides
-      const sentinel = overData.find(
-        (o: ProjectPromptTemplate) => o.promptKey === ENABLED_SENTINEL
-      );
-      const realOverrides = overData.filter(
-        (o: ProjectPromptTemplate) => o.promptKey !== ENABLED_SENTINEL
-      );
-      setOverrides(realOverrides);
-      if (sentinel || realOverrides.length > 0) {
-        setEnabled(true);
-      }
+      setOverrides(overData);
+      setEnabled(!!projData.useProjectPrompts);
     } catch {
-      toast.error(t("editor.save") + " failed");
+      toast.error("Load failed");
     } finally {
       setLoading(false);
     }
-  }, [projectId, t]);
+  }, [projectId]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
-
-  // Toggle: persist enabled state via a sentinel record in DB
-  const handleToggle = async (value: boolean) => {
-    if (value) {
-      // Write sentinel to DB
-      try {
-        await apiFetch(
-          `/api/projects/${projectId}/prompt-templates/${ENABLED_SENTINEL}`,
-          {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ mode: "full", content: "1" }),
-          }
-        );
-        setEnabled(true);
-      } catch {
-        toast.error(t("editor.save") + " failed");
-      }
-      return;
-    }
-    // Turning off — delete all project overrides + sentinel
-    try {
-      const promptKeys = [
-        ...new Set(overrides.map((o) => o.promptKey)),
-        ENABLED_SENTINEL,
-      ];
-      await Promise.all(
-        promptKeys.map((pk) =>
-          apiFetch(`/api/projects/${projectId}/prompt-templates/${pk}`, {
-            method: "DELETE",
-          })
-        )
-      );
-      setOverrides([]);
-      setEnabled(false);
-      toast.success(t("editor.resetSuccess"));
-    } catch {
-      toast.error(t("editor.save") + " failed");
-    }
-  };
 
   // Compute per-prompt stats
   function getPromptStats(entry: RegistryEntry) {
@@ -178,19 +128,40 @@ export function ProjectPromptCards({ projectId }: ProjectPromptCardsProps) {
       (o) => o.promptKey === entry.key
     );
     const hasOverride = promptOverrides.length > 0;
-
     const editableSlots = entry.slots.filter((s) => s.editable);
     const modifiedSlotKeys = new Set(promptOverrides.map((o) => o.slotKey));
     const modifiedCount = editableSlots.filter((s) =>
       modifiedSlotKeys.has(s.key)
     ).length;
-
-    return {
-      hasOverride,
-      totalSlots: editableSlots.length,
-      modifiedCount,
-    };
+    return { hasOverride, totalSlots: editableSlots.length, modifiedCount };
   }
+
+  // Toggle: persist via PATCH /api/projects/:id
+  const handleToggle = async (value: boolean) => {
+    try {
+      await apiFetch(`/api/projects/${projectId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ useProjectPrompts: value ? 1 : 0 }),
+      });
+      setEnabled(value);
+      if (!value && overrides.length > 0) {
+        // Turning off — also delete all project overrides
+        const promptKeys = [...new Set(overrides.map((o) => o.promptKey))];
+        await Promise.all(
+          promptKeys.map((pk) =>
+            apiFetch(`/api/projects/${projectId}/prompt-templates/${pk}`, {
+              method: "DELETE",
+            })
+          )
+        );
+        setOverrides([]);
+        toast.success(t("editor.resetSuccess"));
+      }
+    } catch {
+      toast.error("Save failed");
+    }
+  };
 
   // Delete all project-level overrides for a promptKey
   async function handleUseGlobal(promptKey: string) {
@@ -203,7 +174,6 @@ export function ProjectPromptCards({ projectId }: ProjectPromptCardsProps) {
       if (!resp.ok && resp.status !== 204) {
         throw new Error("Delete failed");
       }
-      // Refresh overrides
       const overResp = await apiFetch(
         `/api/projects/${projectId}/prompt-templates`
       );
@@ -211,7 +181,7 @@ export function ProjectPromptCards({ projectId }: ProjectPromptCardsProps) {
       setOverrides(overData);
       toast.success(t("editor.resetSuccess"));
     } catch {
-      toast.error(t("editor.save") + " failed");
+      toast.error("Failed");
     } finally {
       setDeletingKey(null);
     }
@@ -221,7 +191,6 @@ export function ProjectPromptCards({ projectId }: ProjectPromptCardsProps) {
     return (
       <div className="flex h-40 items-center justify-center text-[--text-muted]">
         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-        <span className="text-sm">Loading...</span>
       </div>
     );
   }
@@ -262,13 +231,10 @@ export function ProjectPromptCards({ projectId }: ProjectPromptCardsProps) {
                 key={entry.key}
                 className="flex flex-col gap-3 rounded-2xl border border-[--border-subtle] bg-white p-4 transition-shadow hover:shadow-[0_2px_12px_rgba(0,0,0,0.06)]"
               >
-                {/* Card header */}
                 <div className="flex items-start gap-3">
                   <div
                     className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-base ${
-                      hasOverride
-                        ? "bg-primary/10"
-                        : "bg-[--surface]"
+                      hasOverride ? "bg-primary/10" : "bg-[--surface]"
                     }`}
                   >
                     {emoji}
@@ -279,16 +245,11 @@ export function ProjectPromptCards({ projectId }: ProjectPromptCardsProps) {
                         {t(tKey(entry.nameKey) as Parameters<typeof t>[0])}
                       </span>
                       {hasOverride ? (
-                        <Badge
-                          variant="success"
-                          className="shrink-0 text-[10px] px-1.5 py-0"
-                        >
+                        <Badge variant="success" className="shrink-0 text-[10px] px-1.5 py-0">
                           {t("editor.overridden")}
                         </Badge>
                       ) : (
-                        <Badge
-                          className="shrink-0 text-[10px] px-1.5 py-0 bg-[--surface] text-[--text-muted]"
-                        >
+                        <Badge className="shrink-0 text-[10px] px-1.5 py-0 bg-[--surface] text-[--text-muted]">
                           {t("editor.usingGlobal")}
                         </Badge>
                       )}
@@ -299,7 +260,6 @@ export function ProjectPromptCards({ projectId }: ProjectPromptCardsProps) {
                   </div>
                 </div>
 
-                {/* Slot count */}
                 <p className="text-xs text-[--text-secondary]">
                   {t("editor.slotsCount", { count: totalSlots })}
                   {hasOverride && modifiedCount > 0
@@ -307,15 +267,12 @@ export function ProjectPromptCards({ projectId }: ProjectPromptCardsProps) {
                     : ""}
                 </p>
 
-                {/* Actions */}
                 <div className="flex items-center gap-2 pt-1">
                   <Button
                     size="sm"
                     variant="outline"
                     className="flex-1"
-                    onClick={() => {
-                      window.location.href = editUrl;
-                    }}
+                    onClick={() => { window.location.href = editUrl; }}
                   >
                     <Edit className="h-3.5 w-3.5" />
                     {t("editor.edit")}

@@ -13,6 +13,7 @@ export const projects = sqliteTable("projects", {
     .default("draft"),
   finalVideoUrl: text("final_video_url"),
   generationMode: text('generation_mode', { enum: ['keyframe', 'reference'] }).notNull().default('keyframe'),
+  useProjectPrompts: integer("use_project_prompts").notNull().default(0),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),
