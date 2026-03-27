@@ -232,6 +232,87 @@
     "defaultVideoModel": "Video Model",
     "languageModels": "Language Models",
     "imageModels": "Image Models",
-    "videoModels": "Video Models"
+    "videoModels": "Video Models",
+    "promptTemplates": "Prompt Templates",
+    "promptTemplatesDesc": "Customize AI generation prompt templates"
+  },
+  "promptTemplates": {
+    "title": "Prompt Templates",
+    "subtitle": "Manage AI generation prompt templates",
+    "categories": {
+      "all": "All",
+      "script": "Script",
+      "character": "Character",
+      "shot": "Storyboard",
+      "frame": "Frame",
+      "video": "Video"
+    },
+    "prompts": {
+      "scriptGenerate": "Script Generation",
+      "scriptParse": "Script Parsing",
+      "scriptSplit": "Script Splitting",
+      "characterExtract": "Character Extraction",
+      "importCharacterExtract": "Import Character Extraction",
+      "characterImage": "Character Design Sheet",
+      "shotSplit": "Shot Decomposition",
+      "frameGenerateFirst": "First Frame",
+      "frameGenerateLast": "Last Frame",
+      "videoGenerate": "Video Generation",
+      "refVideoGenerate": "Reference Video",
+      "refVideoPrompt": "Video Prompt Generation"
+    },
+    "editor": {
+      "slotMode": "Slots",
+      "advancedMode": "Advanced",
+      "edit": "Edit",
+      "preview": "Preview",
+      "previewFull": "Live Preview — Final Prompt",
+      "save": "Save",
+      "resetDefault": "Reset to Default",
+      "resetAll": "Reset All",
+      "modified": "Modified",
+      "customized": "Customized",
+      "usingGlobal": "Using Global",
+      "overridden": "Overridden",
+      "unsavedChanges": "Unsaved changes",
+      "locked": "Locked",
+      "protectedWarning": "Modifying protected regions may cause generation failures",
+      "structureChanged": "Structural change detected",
+      "structureChangedDesc": "You modified a protected section. This may cause downstream parsing failures.",
+      "saveAnyway": "Save Anyway",
+      "restoreSection": "Restore Section",
+      "savedSuccess": "Prompt saved",
+      "resetSuccess": "Reset to default",
+      "slots": "Slots",
+      "slotsCount": "{count} slots"
+    },
+    "project": {
+      "useProjectPrompts": "Use project-specific prompts",
+      "useProjectPromptsDesc": "When disabled, uses global defaults. Enable to customize for this project.",
+      "customize": "Customize",
+      "useGlobal": "Use Global",
+      "modifiedCount": "{count} modified"
+    },
+    "presets": {
+      "title": "Preset Templates",
+      "builtIn": "Built-in",
+      "userCreated": "Custom",
+      "apply": "Apply",
+      "saveAs": "Save as Preset",
+      "delete": "Delete",
+      "presetName": "Preset name",
+      "cinematic": "Cinematic",
+      "cinematicDesc": "Emphasis on live-action film aesthetics",
+      "anime": "Anime",
+      "animeDesc": "Optimized for anime/manga generation",
+      "minimal": "Minimal",
+      "minimalDesc": "Lean prompts, save tokens"
+    },
+    "versions": {
+      "title": "Version History",
+      "restore": "Restore",
+      "current": "Current",
+      "restored": "Restored to selected version"
+    }
   }
 }

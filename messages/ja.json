@@ -232,6 +232,87 @@
     "defaultVideoModel": "動画モデル",
     "languageModels": "言語モデル",
     "imageModels": "画像モデル",
-    "videoModels": "動画モデル"
+    "videoModels": "動画モデル",
+    "promptTemplates": "プロンプト管理",
+    "promptTemplatesDesc": "AI 生成プロンプトテンプレートをカスタマイズ"
+  },
+  "promptTemplates": {
+    "title": "プロンプト管理",
+    "subtitle": "AI 生成フローのプロンプトテンプレートを管理",
+    "categories": {
+      "all": "すべて",
+      "script": "脚本生成",
+      "character": "キャラクター",
+      "shot": "ストーリーボード",
+      "frame": "フレーム",
+      "video": "動画"
+    },
+    "prompts": {
+      "scriptGenerate": "脚本生成",
+      "scriptParse": "脚本解析",
+      "scriptSplit": "脚本分割",
+      "characterExtract": "キャラクター抽出",
+      "importCharacterExtract": "インポートキャラクター抽出",
+      "characterImage": "キャラクターデザインシート",
+      "shotSplit": "ショット分解",
+      "frameGenerateFirst": "最初のフレーム",
+      "frameGenerateLast": "最後のフレーム",
+      "videoGenerate": "動画生成",
+      "refVideoGenerate": "参照動画生成",
+      "refVideoPrompt": "動画プロンプト生成"
+    },
+    "editor": {
+      "slotMode": "スロット",
+      "advancedMode": "高度",
+      "edit": "編集",
+      "preview": "プレビュー",
+      "previewFull": "ライブプレビュー — 最終プロンプト",
+      "save": "保存",
+      "resetDefault": "デフォルトに戻す",
+      "resetAll": "すべてリセット",
+      "modified": "変更済み",
+      "customized": "カスタマイズ済み",
+      "usingGlobal": "グローバル使用中",
+      "overridden": "上書き済み",
+      "unsavedChanges": "未保存の変更あり",
+      "locked": "ロック済み",
+      "protectedWarning": "保護された領域を変更すると生成が失敗する可能性があります",
+      "structureChanged": "構造変更を検出",
+      "structureChangedDesc": "保護されたセクションを変更しました。下流の解析が失敗する可能性があります。",
+      "saveAnyway": "それでも保存",
+      "restoreSection": "このセクションを復元",
+      "savedSuccess": "プロンプトを保存しました",
+      "resetSuccess": "デフォルトにリセットしました",
+      "slots": "スロット",
+      "slotsCount": "{count} 個のスロット"
+    },
+    "project": {
+      "useProjectPrompts": "プロジェクト固有のプロンプトを使用",
+      "useProjectPromptsDesc": "無効時はグローバルデフォルトを使用。有効にするとこのプロジェクト用にカスタマイズできます。",
+      "customize": "カスタマイズ",
+      "useGlobal": "グローバルを使用",
+      "modifiedCount": "{count} 件変更済み"
+    },
+    "presets": {
+      "title": "プリセットテンプレート",
+      "builtIn": "組み込み",
+      "userCreated": "カスタム",
+      "apply": "適用",
+      "saveAs": "プリセットとして保存",
+      "delete": "削除",
+      "presetName": "プリセット名",
+      "cinematic": "シネマティック",
+      "cinematicDesc": "実写映画の美学を重視",
+      "anime": "アニメ",
+      "animeDesc": "アニメ/マンガ生成に最適化",
+      "minimal": "ミニマル",
+      "minimalDesc": "簡潔なプロンプト、トークン節約"
+    },
+    "versions": {
+      "title": "バージョン履歴",
+      "restore": "復元",
+      "current": "現在",
+      "restored": "選択したバージョンに復元しました"
+    }
   }
 }

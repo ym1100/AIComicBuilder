@@ -232,6 +232,87 @@
     "defaultVideoModel": "동영상 모델",
     "languageModels": "언어 모델",
     "imageModels": "이미지 모델",
-    "videoModels": "비디오 모델"
+    "videoModels": "비디오 모델",
+    "promptTemplates": "프롬프트 관리",
+    "promptTemplatesDesc": "AI 생성 프롬프트 템플릿 커스터마이즈"
+  },
+  "promptTemplates": {
+    "title": "프롬프트 관리",
+    "subtitle": "AI 생성 흐름의 프롬프트 템플릿 관리",
+    "categories": {
+      "all": "전체",
+      "script": "각본 생성",
+      "character": "캐릭터",
+      "shot": "스토리보드",
+      "frame": "프레임",
+      "video": "영상"
+    },
+    "prompts": {
+      "scriptGenerate": "각본 생성",
+      "scriptParse": "각본 분석",
+      "scriptSplit": "각본 분할",
+      "characterExtract": "캐릭터 추출",
+      "importCharacterExtract": "가져오기 캐릭터 추출",
+      "characterImage": "캐릭터 디자인 시트",
+      "shotSplit": "샷 분해",
+      "frameGenerateFirst": "첫 번째 프레임",
+      "frameGenerateLast": "마지막 프레임",
+      "videoGenerate": "영상 생성",
+      "refVideoGenerate": "참조 영상 생성",
+      "refVideoPrompt": "영상 프롬프트 생성"
+    },
+    "editor": {
+      "slotMode": "슬롯",
+      "advancedMode": "고급",
+      "edit": "편집",
+      "preview": "미리보기",
+      "previewFull": "실시간 미리보기 — 최종 프롬프트",
+      "save": "저장",
+      "resetDefault": "기본값 복원",
+      "resetAll": "모두 초기화",
+      "modified": "수정됨",
+      "customized": "커스터마이즈됨",
+      "usingGlobal": "글로벌 사용 중",
+      "overridden": "재정의됨",
+      "unsavedChanges": "저장되지 않은 변경사항",
+      "locked": "잠금",
+      "protectedWarning": "보호된 영역을 수정하면 생성이 실패할 수 있습니다",
+      "structureChanged": "구조 변경 감지",
+      "structureChangedDesc": "보호된 섹션을 수정했습니다. 다운스트림 파싱이 실패할 수 있습니다.",
+      "saveAnyway": "그래도 저장",
+      "restoreSection": "이 섹션 복원",
+      "savedSuccess": "프롬프트가 저장되었습니다",
+      "resetSuccess": "기본값으로 초기화되었습니다",
+      "slots": "슬롯",
+      "slotsCount": "슬롯 {count}개"
+    },
+    "project": {
+      "useProjectPrompts": "프로젝트 전용 프롬프트 사용",
+      "useProjectPromptsDesc": "비활성화 시 글로벌 기본값 사용. 활성화하면 이 프로젝트에 맞게 커스터마이즈할 수 있습니다.",
+      "customize": "커스터마이즈",
+      "useGlobal": "글로벌 사용",
+      "modifiedCount": "{count}개 수정됨"
+    },
+    "presets": {
+      "title": "프리셋 템플릿",
+      "builtIn": "기본 제공",
+      "userCreated": "커스텀",
+      "apply": "적용",
+      "saveAs": "프리셋으로 저장",
+      "delete": "삭제",
+      "presetName": "프리셋 이름",
+      "cinematic": "시네마틱",
+      "cinematicDesc": "실사 영화 미학 강조",
+      "anime": "애니메이션",
+      "animeDesc": "애니메이션/만화 생성에 최적화",
+      "minimal": "미니멀",
+      "minimalDesc": "간결한 프롬프트, 토큰 절약"
+    },
+    "versions": {
+      "title": "버전 기록",
+      "restore": "복원",
+      "current": "현재",
+      "restored": "선택한 버전으로 복원되었습니다"
+    }
   }
 }

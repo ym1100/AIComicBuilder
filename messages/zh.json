@@ -232,6 +232,87 @@
     "defaultVideoModel": "视频模型",
     "languageModels": "语言模型",
     "imageModels": "图片模型",
-    "videoModels": "视频模型"
+    "videoModels": "视频模型",
+    "promptTemplates": "提示词管理",
+    "promptTemplatesDesc": "自定义 AI 生成提示词模板"
+  },
+  "promptTemplates": {
+    "title": "提示词管理",
+    "subtitle": "管理 AI 生成流程中的提示词模板",
+    "categories": {
+      "all": "全部",
+      "script": "剧本生成",
+      "character": "角色",
+      "shot": "分镜",
+      "frame": "画面",
+      "video": "视频"
+    },
+    "prompts": {
+      "scriptGenerate": "剧本生成",
+      "scriptParse": "剧本解析",
+      "scriptSplit": "剧本分集",
+      "characterExtract": "角色提取",
+      "importCharacterExtract": "导入角色提取",
+      "characterImage": "角色设计图",
+      "shotSplit": "分镜拆分",
+      "frameGenerateFirst": "首帧生成",
+      "frameGenerateLast": "尾帧生成",
+      "videoGenerate": "视频生成",
+      "refVideoGenerate": "参考视频生成",
+      "refVideoPrompt": "视频提示词生成"
+    },
+    "editor": {
+      "slotMode": "插槽",
+      "advancedMode": "高级",
+      "edit": "编辑",
+      "preview": "实时预览",
+      "previewFull": "实时预览 — 最终提示词",
+      "save": "保存",
+      "resetDefault": "恢复默认",
+      "resetAll": "全部恢复默认",
+      "modified": "已修改",
+      "customized": "已自定义",
+      "usingGlobal": "使用全局",
+      "overridden": "已覆盖",
+      "unsavedChanges": "有未保存修改",
+      "locked": "不可编辑",
+      "protectedWarning": "修改受保护区域可能导致生成失败",
+      "structureChanged": "检测到关键结构变更",
+      "structureChangedDesc": "您修改了受保护区域的结构定义。这可能导致下游解析失败。",
+      "saveAnyway": "仍然保存",
+      "restoreSection": "恢复此区域",
+      "savedSuccess": "提示词已保存",
+      "resetSuccess": "已恢复默认",
+      "slots": "插槽",
+      "slotsCount": "{count} 个插槽"
+    },
+    "project": {
+      "useProjectPrompts": "使用项目专属提示词",
+      "useProjectPromptsDesc": "关闭时使用全局默认配置，开启后可针对此项目自定义",
+      "customize": "自定义",
+      "useGlobal": "用全局",
+      "modifiedCount": "{count} 个已修改"
+    },
+    "presets": {
+      "title": "预设模板",
+      "builtIn": "内置",
+      "userCreated": "自定义",
+      "apply": "应用",
+      "saveAs": "保存为预设",
+      "delete": "删除",
+      "presetName": "预设名称",
+      "cinematic": "电影级",
+      "cinematicDesc": "强调写实电影感",
+      "anime": "动漫风",
+      "animeDesc": "优化动漫/漫画生成",
+      "minimal": "简洁高效",
+      "minimalDesc": "精简提示词，节省 token"
+    },
+    "versions": {
+      "title": "版本历史",
+      "restore": "恢复",
+      "current": "当前",
+      "restored": "已恢复到选定版本"
+    }
   }
 }
