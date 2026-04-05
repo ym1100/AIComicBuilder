@@ -250,18 +250,6 @@ export function ScriptEditor() {
               {t("common.saving")}
             </span>
           )}
-          <Button
-            onClick={handleGenerateScript}
-            disabled={generating || !project.idea?.trim()}
-            size="sm"
-          >
-            {generating ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Sparkles className="h-3.5 w-3.5" />
-            )}
-            {generating ? t("common.generating") : t("project.generateScript")}
-          </Button>
         </div>
       </div>
 
@@ -324,14 +312,28 @@ export function ScriptEditor() {
       </div>
 
       {/* Generated script */}
-      {project.script && (
-        <div className="rounded-2xl border border-[--border-subtle] bg-white p-1.5">
-          <div className="flex items-center gap-2 px-5 pt-3 pb-1">
+      <div className="rounded-2xl border border-[--border-subtle] bg-white p-1.5">
+        <div className="flex items-center justify-between px-5 pt-3 pb-1">
+          <div className="flex items-center gap-2">
             <FileText className="h-3.5 w-3.5 text-primary" />
             <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[--text-muted]">
               {t("project.generatedScript")}
             </span>
           </div>
+          <Button
+            size="sm"
+            onClick={handleGenerateScript}
+            disabled={generating || generatingOutline || !project.idea?.trim()}
+          >
+            {generating ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Sparkles className="h-3.5 w-3.5" />
+            )}
+            {generating ? t("common.generating") : t("project.generateScript")}
+          </Button>
+        </div>
+        {project.script ? (
           <Textarea
             ref={scriptTextareaRef}
             value={project.script}
@@ -343,8 +345,12 @@ export function ScriptEditor() {
               generating ? "opacity-40" : ""
             }`}
           />
-        </div>
-      )}
+        ) : (
+          <div className="px-5 pb-4 pt-2 text-sm text-[--text-muted]">
+            {t("project.scriptPlaceholder") || "点击上方按钮生成剧本..."}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
