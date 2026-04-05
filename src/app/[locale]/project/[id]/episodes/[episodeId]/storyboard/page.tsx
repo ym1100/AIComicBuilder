@@ -22,6 +22,7 @@ import {
   LayoutGrid,
   List,
   ChevronDown,
+  GitCompare,
 } from "lucide-react";
 import { InlineModelPicker } from "@/components/editor/model-selector";
 import { VideoRatioPicker } from "@/components/editor/video-ratio-picker";
@@ -31,6 +32,7 @@ import { GenerationModeTab } from "@/components/editor/generation-mode-tab";
 import { ShotDrawer } from "@/components/editor/shot-drawer";
 import { CharactersInlinePanel } from "@/components/editor/characters-inline-panel";
 import { ShotKanban } from "@/components/editor/shot-kanban";
+import { VersionCompare } from "@/components/editor/version-compare";
 import { PromptEditButton } from "@/components/prompt-templates/prompt-edit-button";
 import Link from "next/link";
 
@@ -62,6 +64,7 @@ export default function EpisodeStoryboardPage() {
   } | null>(null);
   const [lastFailedShots, setLastFailedShots] = useState<string[]>([]);
   const [lastBatchAction, setLastBatchAction] = useState<string | null>(null);
+  const [compareMode, setCompareMode] = useState(false);
 
   const currentEpisodeId = useProjectStore((s) => s.currentEpisodeId);
   const episodeStoreEpisodes = useEpisodeStore((s) => s.episodes);
@@ -557,6 +560,16 @@ export default function EpisodeStoryboardPage() {
               </button>
             </div>
           )}
+          {totalShots > 0 && versions.length >= 2 && (
+            <Button
+              variant={compareMode ? "default" : "outline"}
+              size="sm"
+              onClick={() => setCompareMode(!compareMode)}
+            >
+              <GitCompare className="h-3.5 w-3.5" />
+              {compareMode ? t("project.exitCompare") || "Exit Compare" : t("project.compareVersions") || "Compare Versions"}
+            </Button>
+          )}
           {totalShots > 0 && (
             <Link
               href={`/${locale}/project/${project!.id}/episodes/${useProjectStore.getState().currentEpisodeId}/preview${selectedVersionId ? `?versionId=${selectedVersionId}` : ""}`}
@@ -901,7 +914,25 @@ export default function EpisodeStoryboardPage() {
       </div>
 
       {/* Shot cards */}
-      {totalShots === 0 ? (
+      {compareMode ? (
+        <VersionCompare
+          versions={versions}
+          currentVersionId={selectedVersionId}
+          onVersionChange={setSelectedVersionId}
+          getShotsForVersion={() => {
+            // UI shell: returns current shots as placeholder for both versions
+            // Full per-version fetching would require additional API calls
+            return project.shots.map((s) => ({
+              id: s.id,
+              sequence: s.sequence,
+              firstFrame: s.firstFrame,
+              lastFrame: s.lastFrame,
+              prompt: s.prompt,
+              duration: s.duration,
+            }));
+          }}
+        />
+      ) : totalShots === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-[--border-subtle] bg-[--surface]/50 py-24">
           <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/15 to-accent/10">
             <Film className="h-7 w-7 text-primary" />
