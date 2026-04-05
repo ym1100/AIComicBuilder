@@ -41,10 +41,31 @@ export async function handleScriptOutline(task: Task) {
   const { projectId, episodeId, idea } = payload;
 
   const ai = resolveAIProvider(payload.modelConfig);
-  const result = await ai.generateText(`Creative concept: ${idea}`, {
+  const rawResult = await ai.generateText(`Creative concept: ${idea}`, {
     systemPrompt: OUTLINE_SYSTEM,
     temperature: 0.7,
   });
+
+  // Extract pure JSON from AI response (strip markdown code blocks if present)
+  let result = rawResult.trim();
+  const jsonMatch = result.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (jsonMatch) {
+    result = jsonMatch[1].trim();
+  } else {
+    // Try to find a JSON object directly
+    const objMatch = result.match(/\{[\s\S]*\}/);
+    if (objMatch) {
+      result = objMatch[0];
+    }
+  }
+
+  // Validate it's parseable JSON
+  try {
+    JSON.parse(result);
+  } catch {
+    // If still not valid JSON, wrap the raw text
+    console.warn("[ScriptOutline] AI did not return valid JSON, storing raw text");
+  }
 
   // Save outline
   if (episodeId) {

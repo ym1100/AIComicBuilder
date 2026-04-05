@@ -263,51 +263,54 @@ export function ScriptEditor() {
           </Button>
         </div>
 
-        {/* Render parsed outline beats if JSON is valid */}
-        {outline && (() => {
+        {/* Render parsed outline — structured if JSON, raw otherwise */}
+        {outline ? (() => {
           try {
             const parsed = JSON.parse(outline);
-            return (
-              <div className="space-y-2 px-5 py-3 text-sm">
-                {parsed.premise && (
-                  <p className="font-medium text-[--text-primary]">{parsed.premise}</p>
-                )}
-                {parsed.beats?.map((beat: { name: string; action: string; emotion?: string; ratio?: string }, i: number) => (
-                  <div key={i} className="flex items-start gap-2 rounded-lg bg-[--bg-muted] p-2.5">
-                    <span className="font-mono text-xs text-[--text-muted] shrink-0 pt-0.5">{i + 1}</span>
-                    <div className="flex-1 min-w-0">
-                      <span className="font-medium text-[--text-primary]">{beat.name}</span>
-                      <p className="text-[--text-secondary] text-xs mt-0.5">{beat.action}</p>
-                      {beat.emotion && (
-                        <p className="text-[--text-muted] text-xs mt-0.5">{beat.emotion}</p>
+            if (parsed.premise || parsed.beats) {
+              return (
+                <div className="space-y-2 px-5 py-3 text-sm">
+                  {parsed.premise && (
+                    <p className="font-medium text-[--text-primary]">{parsed.premise}</p>
+                  )}
+                  {parsed.beats?.map((beat: { name: string; action: string; emotion?: string; ratio?: string }, i: number) => (
+                    <div key={i} className="flex items-start gap-2 rounded-lg bg-[--bg-muted] p-2.5">
+                      <span className="font-mono text-xs text-[--text-muted] shrink-0 pt-0.5">{i + 1}</span>
+                      <div className="flex-1 min-w-0">
+                        <span className="font-medium text-[--text-primary]">{beat.name}</span>
+                        <p className="text-[--text-secondary] text-xs mt-0.5">{beat.action}</p>
+                        {beat.emotion && (
+                          <p className="text-[--text-muted] text-xs mt-0.5">{beat.emotion}</p>
+                        )}
+                      </div>
+                      {beat.ratio && (
+                        <span className="text-xs text-[--text-muted] shrink-0">{beat.ratio}</span>
                       )}
                     </div>
-                    {beat.ratio && (
-                      <span className="text-xs text-[--text-muted] shrink-0">{beat.ratio}</span>
-                    )}
-                  </div>
-                ))}
-                {parsed.climax && (
-                  <p className="text-xs text-[--text-secondary]"><span className="font-medium">Climax:</span> {parsed.climax}</p>
-                )}
-                {parsed.ending && (
-                  <p className="text-xs text-[--text-secondary]"><span className="font-medium">Ending:</span> {parsed.ending}</p>
-                )}
-              </div>
-            );
+                  ))}
+                  {parsed.climax && (
+                    <p className="text-xs text-[--text-secondary]"><span className="font-medium">Climax:</span> {parsed.climax}</p>
+                  )}
+                  {parsed.ending && (
+                    <p className="text-xs text-[--text-secondary]"><span className="font-medium">Ending:</span> {parsed.ending}</p>
+                  )}
+                </div>
+              );
+            }
           } catch {
-            return null;
+            // Not JSON — show raw text below in textarea
           }
-        })()}
+          return null;
+        })() : null}
 
         <Textarea
           value={outline}
           onChange={(e) => handleOutlineChange(e.target.value)}
           onBlur={handleSave}
           placeholder={t("project.outlinePlaceholder")}
-          rows={3}
+          rows={outline ? 4 : 2}
           disabled={generatingOutline}
-          className={`min-h-[80px] resize-none overflow-y-auto rounded-xl border-0 bg-transparent px-5 pb-4 font-mono text-sm leading-relaxed placeholder:text-[--text-muted] focus-visible:ring-0 ${
+          className={`min-h-[60px] resize-none overflow-y-auto rounded-xl border-0 bg-transparent px-5 pb-4 font-mono text-sm leading-relaxed placeholder:text-[--text-muted] focus-visible:ring-0 ${
             generatingOutline ? "opacity-40" : ""
           }`}
         />
