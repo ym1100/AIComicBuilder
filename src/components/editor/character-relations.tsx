@@ -38,7 +38,15 @@ export function CharacterRelations({
   const [relType, setRelType] = useState("neutral");
   const [desc, setDesc] = useState("");
 
+  const [allCharacters, setAllCharacters] = useState<Character[]>([]);
+
   useEffect(() => {
+    // Load all project characters for name resolution
+    apiFetch(`/api/projects/${projectId}/characters`)
+      .then((r) => r.json())
+      .then((data) => setAllCharacters(Array.isArray(data) ? data : data.characters || []))
+      .catch(() => {});
+
     apiFetch(`/api/projects/${projectId}/character-relations`)
       .then((r) => r.json())
       .then(setRelations)
@@ -69,7 +77,16 @@ export function CharacterRelations({
     setRelations((prev) => prev.filter((r) => r.id !== id));
   }
 
-  const getName = (id: string) => characters.find((c) => c.id === id)?.name || "?";
+  const getName = (id: string) =>
+    characters.find((c) => c.id === id)?.name ||
+    allCharacters.find((c) => c.id === id)?.name ||
+    "?";
+
+  // Filter: only show relations where BOTH characters are in current character list
+  const charIds = new Set(characters.map((c) => c.id));
+  const filteredRelations = relations.filter(
+    (r) => charIds.has(r.characterAId) && charIds.has(r.characterBId)
+  );
 
   if (characters.length < 2) return null;
 
@@ -77,7 +94,7 @@ export function CharacterRelations({
     <div className="space-y-3 rounded-lg border p-4">
       <h3 className="text-sm font-medium">{tChar("relations")}</h3>
 
-      {relations.map((rel) => (
+      {filteredRelations.map((rel) => (
         <div key={rel.id} className="flex items-center gap-2 rounded border p-2 text-sm">
           <span className="font-medium">{getName(rel.characterAId)}</span>
           <span className="rounded bg-muted px-2 py-0.5 text-xs">{rel.relationType}</span>
