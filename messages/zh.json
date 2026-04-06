@@ -46,6 +46,8 @@
     "outlinePlaceholder": "故事大纲将在此显示...",
     "scriptIdeaPlaceholder": "输入你的创意想法...",
     "extractCharacters": "角色解析",
+    "compareVersions": "对比版本",
+    "exitCompare": "退出对比",
     "generateShots": "生成分镜",
     "generateFrames": "生成画面",
     "generateVideo": "生成视频",

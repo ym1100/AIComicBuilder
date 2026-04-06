@@ -45,6 +45,8 @@
     "outlinePlaceholder": "Story outline will appear here...",
     "scriptIdeaPlaceholder": "Enter your creative idea...",
     "extractCharacters": "Parse Characters",
+    "compareVersions": "Compare Versions",
+    "exitCompare": "Exit Compare",
     "generateShots": "Generate Shots",
     "generateFrames": "Generate Frames",
     "generateVideo": "Generate Video",

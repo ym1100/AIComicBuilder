@@ -45,6 +45,8 @@
     "outlinePlaceholder": "스토리 개요가 여기에 표시됩니다...",
     "scriptIdeaPlaceholder": "창의적인 아이디어를 입력하세요...",
     "extractCharacters": "캐릭터 분석",
+    "compareVersions": "버전 비교",
+    "exitCompare": "비교 종료",
     "generateShots": "샷 생성",
     "generateFrames": "프레임 생성",
     "generateVideo": "영상 생성",
