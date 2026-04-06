@@ -115,7 +115,15 @@
     "relationDesc": "描述（可选）",
     "addRelation": "添加",
     "characterA": "角色A",
-    "characterB": "角色B"
+    "characterB": "角色B",
+    "relType_ally": "盟友",
+    "relType_enemy": "敌对",
+    "relType_lover": "恋人",
+    "relType_family": "家人",
+    "relType_mentor": "师徒",
+    "relType_rival": "竞争",
+    "relType_stranger": "陌生",
+    "relType_neutral": "中立"
   },
   "shot": {
     "sequence": "第 {number} 个分镜",

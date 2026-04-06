@@ -114,7 +114,15 @@
     "relationDesc": "Description (optional)",
     "addRelation": "Add",
     "characterA": "Character A",
-    "characterB": "Character B"
+    "characterB": "Character B",
+    "relType_ally": "Ally",
+    "relType_enemy": "Enemy",
+    "relType_lover": "Lover",
+    "relType_family": "Family",
+    "relType_mentor": "Mentor",
+    "relType_rival": "Rival",
+    "relType_stranger": "Stranger",
+    "relType_neutral": "Neutral"
   },
   "shot": {
     "sequence": "Shot {number}",

@@ -114,7 +114,15 @@
     "relationDesc": "설명 (선택사항)",
     "addRelation": "추가",
     "characterA": "캐릭터 A",
-    "characterB": "캐릭터 B"
+    "characterB": "캐릭터 B",
+    "relType_ally": "동맹",
+    "relType_enemy": "적대",
+    "relType_lover": "연인",
+    "relType_family": "가족",
+    "relType_mentor": "사제",
+    "relType_rival": "경쟁",
+    "relType_stranger": "타인",
+    "relType_neutral": "중립"
   },
   "shot": {
     "sequence": "샷 {number}",

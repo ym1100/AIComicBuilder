@@ -97,7 +97,7 @@ export function CharacterRelations({
       {filteredRelations.map((rel) => (
         <div key={rel.id} className="flex items-center gap-2 rounded border p-2 text-sm">
           <span className="font-medium">{getName(rel.characterAId)}</span>
-          <span className="rounded bg-muted px-2 py-0.5 text-xs">{rel.relationType}</span>
+          <span className="rounded bg-muted px-2 py-0.5 text-xs">{tChar(`relType_${rel.relationType}`)}</span>
           <span className="font-medium">{getName(rel.characterBId)}</span>
           {rel.description && (
             <span className="text-muted-foreground truncate">&mdash; {rel.description}</span>
@@ -125,7 +125,7 @@ export function CharacterRelations({
           className="h-9 rounded-md border bg-background px-3 text-sm"
         >
           {RELATION_TYPES.map((rt) => (
-            <option key={rt} value={rt}>{rt}</option>
+            <option key={rt} value={rt}>{tChar(`relType_${rt}`)}</option>
           ))}
         </select>
         <select
