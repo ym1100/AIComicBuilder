@@ -6,21 +6,21 @@ interface QualityResult {
   issues: string[];
 }
 
-const QUALITY_CHECK_PROMPT = `Analyze this generated video frame for quality issues. Score 0-100.
+const QUALITY_CHECK_PROMPT = `分析此生成的视频帧的质量问题。评分 0-100。
 
-Check for:
-1. Face integrity (no distortion, correct proportions, natural features)
-2. Limb integrity (correct number of fingers, natural poses, no extra limbs)
-3. Visual coherence (no artifacts, glitches, or object clipping/merging)
-4. Overall image quality (sharpness, proper lighting, no color banding)
+检查项目：
+1. 面部完整性（无变形、比例正确、面部特征自然）
+2. 肢体完整性（手指数量正确、姿势自然、无多余肢体）
+3. 视觉连贯性（无伪影、无故障、无物体穿模/融合）
+4. 整体图像质量（清晰度、光照合理、无色带）
 
-If a reference frame is provided (second image), also check:
-5. Character consistency with reference (similar face, outfit, hair)
+如果提供了参考帧（第二张图像），还需检查：
+5. 角色与参考的一致性（相似的面部、服装、发型）
 
-Output ONLY valid JSON (no markdown, no code blocks):
-{"score": <number 0-100>, "issues": ["<issue description>", ...], "pass": <boolean>}
+仅输出有效 JSON（不使用 markdown，不使用代码块）：
+{"score": <0-100 的数字>, "issues": ["<问题描述>", ...], "pass": <布尔值>}
 
-A score >= 60 passes. Only fail for serious visual defects like distorted faces, missing/extra limbs, or severe artifacts.`;
+评分 >= 60 为通过。仅在出现严重视觉缺陷时判定不通过，如面部变形、肢体缺失/多余或严重伪影。`;
 
 export async function checkVideoQuality(
   provider: { generateText: (prompt: string, options?: TextOptions) => Promise<string> },

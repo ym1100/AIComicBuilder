@@ -5,21 +5,21 @@ interface ContinuityResult {
   issues: string[];
 }
 
-const CONTINUITY_PROMPT = `Compare these two consecutive frames from an animated film.
-Frame 1 is the LAST frame of the previous shot.
-Frame 2 is the FIRST frame of the next shot.
+const CONTINUITY_PROMPT = `比较这两帧来自动画影片的连续画面。
+第一帧是上一个镜头的末帧。
+第二帧是下一个镜头的首帧。
 
-Check for continuity issues:
-1. Character costume consistency (same clothes, accessories, hair)
-2. Character position logical progression (natural movement)
-3. Lighting direction consistency (same light source angle)
-4. Color tone consistency (matching grading)
-5. Background continuity (if same location)
+检查连续性问题：
+1. 角色服装一致性（相同的服装、配饰、发型）
+2. 角色位置逻辑延续性（自然的运动过渡）
+3. 光照方向一致性（相同的光源角度）
+4. 色调一致性（匹配的调色）
+5. 背景连续性（如果是同一地点）
 
-Output ONLY valid JSON (no markdown):
-{"pass": true/false, "issues": ["description of each issue found"]}
+仅输出有效 JSON（不使用 markdown）：
+{"pass": true/false, "issues": ["每个发现的问题描述"]}
 
-Pass if no significant continuity breaks. Minor perspective changes from different camera angles are OK and expected.`;
+如果没有显著的连续性断裂则通过。不同机位角度带来的轻微透视变化是正常的、预期的。`;
 
 export async function checkContinuity(
   provider: { generateText: (prompt: string, options?: TextOptions) => Promise<string> },
