@@ -170,11 +170,21 @@ export async function handleFrameGenerate(task: Task) {
     referenceImages: [firstFramePath, ...charRefImages],
   });
 
+  // Update history in referenceImages (first_frame/last_frame items)
+  const { parseRefImages, serializeRefImages, appendToHistory } = await import("@/lib/ref-image-utils");
+  const refImagesNow = parseRefImages(shot.referenceImages as string);
+  const updatedRefs = refImagesNow.map((r) => {
+    if (r.type === "first_frame") return appendToHistory(r, firstFramePath);
+    if (r.type === "last_frame") return appendToHistory(r, lastFramePath);
+    return r;
+  });
+
   await db
     .update(shots)
     .set({
       firstFrame: firstFramePath,
       lastFrame: lastFramePath,
+      referenceImages: serializeRefImages(updatedRefs),
       status: "completed",
     })
     .where(eq(shots.id, payload.shotId));

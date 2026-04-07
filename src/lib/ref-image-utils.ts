@@ -1,6 +1,6 @@
 import { id as genId } from "@/lib/id";
 
-export type RefImageType = "first_frame" | "last_frame" | "reference";
+export type RefImageType = "first_frame" | "last_frame" | "reference" | "video" | "ref_video" | "scene_ref";
 
 export interface RefImage {
   id: string;
@@ -10,6 +10,8 @@ export interface RefImage {
   status: "pending" | "generated";
   characters?: string[];
   model?: { providerId: string; modelId: string };
+  /** All generated versions (paths). Most recent at the end. */
+  history?: string[];
 }
 
 /**
@@ -50,6 +52,7 @@ export function parseRefImages(json: string | null | undefined): RefImage[] {
         status: (obj.status as "pending" | "generated") || (obj.imagePath ? "generated" : "pending"),
         characters: Array.isArray(obj.characters) ? obj.characters as string[] : undefined,
         model: obj.model as { providerId: string; modelId: string } | undefined,
+        history: Array.isArray(obj.history) ? obj.history as string[] : undefined,
       };
     });
   } catch {
@@ -75,4 +78,22 @@ export function getFrameItems(images: RefImage[]) {
 /** Get only reference items */
 export function getRefItems(images: RefImage[]): RefImage[] {
   return images.filter((r) => r.type === "reference");
+}
+
+/** Add a new generated path to history and set as current. */
+export function appendToHistory(item: RefImage, newPath: string): RefImage {
+  const history = item.history ? [...item.history] : [];
+  // Include current imagePath in history if not already there
+  if (item.imagePath && !history.includes(item.imagePath)) {
+    history.push(item.imagePath);
+  }
+  if (!history.includes(newPath)) {
+    history.push(newPath);
+  }
+  return {
+    ...item,
+    imagePath: newPath,
+    status: "generated",
+    history,
+  };
 }

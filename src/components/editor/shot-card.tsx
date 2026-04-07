@@ -22,6 +22,8 @@ import {
   RefreshCw,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   CheckCircle2,
   Circle,
   XCircle,
@@ -403,6 +405,21 @@ export function ShotCard({
       const updated = parsedRefImages.map((r) => r.id === refId ? { ...r, prompt: value } : r);
       saveRefImages(updated);
     }, 800);
+  }
+
+  // Switch active version of a ref image (cycle through history)
+  function handleSwitchRefImageVersion(refId: string, direction: "prev" | "next") {
+    const updated = parsedRefImages.map((r) => {
+      if (r.id !== refId) return r;
+      const history = r.history || (r.imagePath ? [r.imagePath] : []);
+      if (history.length < 2) return r;
+      const currentIdx = r.imagePath ? history.indexOf(r.imagePath) : -1;
+      const nextIdx = direction === "next"
+        ? (currentIdx + 1) % history.length
+        : (currentIdx - 1 + history.length) % history.length;
+      return { ...r, imagePath: history[nextIdx] };
+    });
+    saveRefImages(updated);
   }
 
   // Update a ref image's prompt (immediate save, e.g. on blur)
@@ -829,6 +846,31 @@ export function ShotCard({
                             )}
                           </div>
                         )}
+                        {/* History navigation arrows */}
+                        {(() => {
+                          const history = ref.history || (ref.imagePath ? [ref.imagePath] : []);
+                          if (history.length < 2) return null;
+                          const currentIdx = ref.imagePath ? history.indexOf(ref.imagePath) : -1;
+                          return (
+                            <>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleSwitchRefImageVersion(ref.id, "prev"); }}
+                                className="absolute left-1 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-1 text-white hover:bg-black/70 transition-colors"
+                              >
+                                <ChevronLeft className="h-3 w-3" />
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleSwitchRefImageVersion(ref.id, "next"); }}
+                                className="absolute right-1 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-1 text-white hover:bg-black/70 transition-colors"
+                              >
+                                <ChevronRight className="h-3 w-3" />
+                              </button>
+                              <span className="absolute bottom-1 left-1/2 -translate-x-1/2 rounded bg-black/50 px-1.5 py-0.5 text-[9px] text-white">
+                                {currentIdx + 1}/{history.length}
+                              </span>
+                            </>
+                          );
+                        })()}
                         {/* Loading overlay during regeneration */}
                         {regeneratingRefIds.has(ref.id) && (
                           <div className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-sm">
@@ -952,6 +994,9 @@ export function ShotCard({
                 const label = isStart ? t("shot.startFrame") : t("shot.endFrame");
                 const colorClass = isStart ? "border-blue-200 bg-blue-50/30" : "border-amber-200 bg-amber-50/30";
 
+                const frameItem = isStart ? firstFrameItem : lastFrameItem;
+                const frameHistory = frameItem?.history || (asset.src ? [asset.src] : []);
+                const frameCurrentIdx = asset.src ? frameHistory.indexOf(asset.src) : -1;
                 return (
                   <div key={i} className="rounded-lg border border-[--border-subtle] bg-white overflow-hidden">
                     {/* Image */}
@@ -965,6 +1010,36 @@ export function ShotCard({
                         <img src={uploadUrl(asset.src)} className="w-full object-contain" />
                       ) : (
                         <div className="flex h-20 items-center justify-center"><ImageIcon className="h-5 w-5 text-[--text-muted]" /></div>
+                      )}
+                      {/* History arrows */}
+                      {frameHistory.length > 1 && (
+                        <>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const next = (frameCurrentIdx - 1 + frameHistory.length) % frameHistory.length;
+                              patchShot({ [fieldName]: frameHistory[next] });
+                              onUpdate();
+                            }}
+                            className="absolute left-1 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-1 text-white hover:bg-black/70"
+                          >
+                            <ChevronLeft className="h-3 w-3" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const next = (frameCurrentIdx + 1) % frameHistory.length;
+                              patchShot({ [fieldName]: frameHistory[next] });
+                              onUpdate();
+                            }}
+                            className="absolute right-1 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-1 text-white hover:bg-black/70"
+                          >
+                            <ChevronRight className="h-3 w-3" />
+                          </button>
+                          <span className="absolute bottom-1 left-1/2 -translate-x-1/2 rounded bg-black/50 px-1.5 py-0.5 text-[9px] text-white">
+                            {frameCurrentIdx + 1}/{frameHistory.length}
+                          </span>
+                        </>
                       )}
                     </div>
                     {/* Prompt */}

@@ -27,7 +27,7 @@ import { buildVideoPrompt, buildReferenceVideoPrompt } from "@/lib/ai/prompts/vi
 import { buildRefVideoPromptRequest } from "@/lib/ai/prompts/ref-video-prompt-generate";
 import { buildCharacterTurnaroundPrompt } from "@/lib/ai/prompts/character-image";
 import { assembleVideo } from "@/lib/video/ffmpeg";
-import { parseRefImages, serializeRefImages, type RefImage } from "@/lib/ref-image-utils";
+import { parseRefImages, serializeRefImages, appendToHistory, type RefImage } from "@/lib/ref-image-utils";
 import { buildRefImagePromptsRequest } from "@/lib/ai/prompts/ref-image-prompts";
 
 export const maxDuration = 300;
@@ -1894,9 +1894,12 @@ async function handleBatchSceneFrame(
               ...imageOpts,
               referenceImages: shotCharRefs,
             });
-            entry.imagePath = imagePath;
-            entry.status = "generated";
-            console.log(`[BatchRefImage] Shot ${shot.sequence}: ref "${entry.id}" done`);
+            // Update entry via appendToHistory pattern
+            const updated = appendToHistory(entry, imagePath);
+            entry.imagePath = updated.imagePath;
+            entry.status = updated.status;
+            entry.history = updated.history;
+            console.log(`[BatchRefImage] Shot ${shot.sequence}: ref "${entry.id}" done (history: ${entry.history?.length})`);
             return true;
           } catch (err) {
             console.warn(`[BatchRefImage] Shot ${shot.sequence} ref ${entry.id} failed:`, err);
@@ -2764,10 +2767,12 @@ async function handleBatchRefImageGenerate(
           ...batchImageOpts,
           referenceImages: entryCharRefs,
         });
-        entry.imagePath = imagePath;
-        entry.status = "generated";
+        const updated = appendToHistory(entry, imagePath);
+        entry.imagePath = updated.imagePath;
+        entry.status = updated.status;
+        entry.history = updated.history;
         generated++;
-        console.log(`[BatchRefImage] Shot ${shot.sequence}: generated ref image "${entry.id}"`);
+        console.log(`[BatchRefImage] Shot ${shot.sequence}: generated ref image "${entry.id}" (history: ${entry.history?.length})`);
       } catch (err) {
         failed++;
         console.warn(`[BatchRefImage] Shot ${shot.sequence}: failed ref image "${entry.id}":`, err);
@@ -2849,11 +2854,7 @@ async function handleSingleRefImageGenerate(
     const latestRefImages = parseRefImages(latestShot?.referenceImages as string);
     const idx = latestRefImages.findIndex((r) => r.id === refImageId);
     if (idx >= 0) {
-      latestRefImages[idx] = {
-        ...latestRefImages[idx],
-        imagePath,
-        status: "generated",
-      };
+      latestRefImages[idx] = appendToHistory(latestRefImages[idx], imagePath);
       await db
         .update(shots)
         .set({ referenceImages: serializeRefImages(latestRefImages) })
@@ -3015,10 +3016,12 @@ async function handleSingleShotRefImageGenerateAll(
         ...imgOpts,
         referenceImages: charRefsForShot,
       });
-      entry.imagePath = imagePath;
-      entry.status = "generated";
+      const updated = appendToHistory(entry, imagePath);
+      entry.imagePath = updated.imagePath;
+      entry.status = updated.status;
+      entry.history = updated.history;
       generated++;
-      console.log(`[RefImageGenAll] Shot ${shot.sequence}: generated ref "${entry.id}"`);
+      console.log(`[RefImageGenAll] Shot ${shot.sequence}: generated ref "${entry.id}" (history: ${entry.history?.length})`);
     } catch (err) {
       console.warn(`[RefImageGenAll] Shot ${shot.sequence} ref ${entry.id} failed:`, err);
     }
