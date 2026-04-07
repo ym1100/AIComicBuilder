@@ -2809,13 +2809,22 @@ async function handleSingleRefImageGenerate(
       quality: "hd",
       referenceImages: charRefs,
     });
-    entry.imagePath = imagePath;
-    entry.status = "generated";
 
-    await db
-      .update(shots)
-      .set({ referenceImages: serializeRefImages(refImages) })
-      .where(eq(shots.id, shotId));
+    // Re-read shot to avoid race condition with other concurrent updates
+    const [latestShot] = await db.select().from(shots).where(eq(shots.id, shotId));
+    const latestRefImages = parseRefImages(latestShot?.referenceImages as string);
+    const idx = latestRefImages.findIndex((r) => r.id === refImageId);
+    if (idx >= 0) {
+      latestRefImages[idx] = {
+        ...latestRefImages[idx],
+        imagePath,
+        status: "generated",
+      };
+      await db
+        .update(shots)
+        .set({ referenceImages: serializeRefImages(latestRefImages) })
+        .where(eq(shots.id, shotId));
+    }
 
     return NextResponse.json({ ok: true, imagePath });
   } catch (err) {
